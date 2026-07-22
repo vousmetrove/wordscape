@@ -16,6 +16,9 @@ let sessionIndex = 0;
 let sessionMode = "today";
 let toastTimer;
 let searchTimer;
+let recallAttempts = 0;
+let pendingAnswer = "got";
+let activeAudio = null;
 
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
@@ -100,16 +103,18 @@ function renderDashboard() {
   const total = plan.queue.length;
   const reviewPercent = total ? (reviewCount / total) * 100 : 0;
 
-  $("#plan-total").textContent = total;
+  $("#plan-total").textContent = state.settings.goal;
   $("#due-count").textContent = reviewCount;
   $("#new-count").textContent = newCount;
   $("#review-nav-count").textContent = getDueWords().length;
   $("#mistake-nav-count").textContent = Object.values(state.records).filter((record) => record.inMistake).length;
   $("#profile-goal").textContent = `${state.settings.goal} words a day`;
   $(".review-fill").style.width = `${reviewPercent}%`;
-  $(".new-fill").style.width = `${100 - reviewPercent}%`;
+  $(".new-fill").style.width = `${state.settings.goal ? (newCount / state.settings.goal) * 100 : 0}%`;
 
-  if (!reviewCount) {
+  if (total < state.settings.goal) {
+    $("#mix-explanation").textContent = `${total} enriched words are ready for a ${state.settings.goal}-word goal. Import more checked words to fill the gap.`;
+  } else if (!reviewCount) {
     $("#mix-explanation").textContent = "No review is due yet, so today is all new words.";
   } else if (plan.overflow) {
     $("#mix-explanation").textContent = `${reviewCount} reviews fill today's goal. ${plan.overflow} more wait in the queue.`;
@@ -215,7 +220,6 @@ function renderStudyWord() {
   $("#study-phonetic").textContent = word.phonetic || "pronunciation available online";
   $("#study-pos").textContent = word.pos || "word";
   $("#scene-emoji").textContent = word.emoji || "💭";
-  $("#study-scene").textContent = word.scene || `Picture a clear moment where “${word.word}” is happening.`;
   $("#study-definition").textContent = word.definition;
   $("#study-example").textContent = word.example || `Use “${word.word}” in a scene you know well.`;
   $("#study-source").textContent = word.source || "Imported word bank";
@@ -224,7 +228,80 @@ function renderStudyWord() {
   $("#chinese-result").hidden = true;
   $("#chinese-result").textContent = "";
   $("#reveal-chinese").disabled = false;
+  $("#letter-hint").textContent = `${word.word.length} letters`;
+  $("#recall-input").value = "";
+  $("#recall-input").classList.remove("wrong");
+  $("#recall-feedback").textContent = "";
+  $("#cant-recall").textContent = "I cannot recall it — show me";
+  recallAttempts = 0;
+  pendingAnswer = "got";
+  stopAudio();
+  renderStudyMedia(word);
+  showRecallPhase();
   $("#study-card").animate([{ opacity: .55, transform: "translateY(5px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 240 });
+  setTimeout(() => $("#recall-input").focus(), 120);
+}
+
+function renderStudyMedia(word) {
+  const image = $("#study-image");
+  const video = $("#study-video");
+  const emoji = $("#scene-emoji");
+  image.hidden = true;
+  video.hidden = true;
+  emoji.hidden = true;
+  video.pause();
+  video.removeAttribute("src");
+
+  if (word.video) {
+    video.src = word.video;
+    video.hidden = false;
+    video.play().catch(() => { video.hidden = true; emoji.hidden = false; });
+  } else if (word.image) {
+    image.src = word.image;
+    image.alt = `A visual clue for a ${word.word.length}-letter English word`;
+    image.hidden = false;
+    image.onerror = () => { image.hidden = true; emoji.hidden = false; };
+  } else {
+    emoji.hidden = false;
+  }
+}
+
+function showRecallPhase() {
+  $("#recall-phase").hidden = false;
+  $("#meaning-phase").hidden = true;
+  $$("[data-method-step]").forEach((step) => step.classList.toggle("active", step.dataset.methodStep === "1"));
+}
+
+function revealMeaning(answer) {
+  pendingAnswer = answer;
+  $("#recall-phase").hidden = true;
+  $("#meaning-phase").hidden = false;
+  $$("[data-method-step]").forEach((step) => step.classList.toggle("active", step.dataset.methodStep === "2"));
+  $("#meaning-phase").animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 260 });
+}
+
+function checkRecall(event) {
+  event.preventDefault();
+  const word = session[sessionIndex];
+  const input = $("#recall-input");
+  const answer = input.value.trim().toLowerCase();
+  if (!answer) return;
+
+  if (answer === word.word.toLowerCase()) {
+    $("#recall-feedback").textContent = recallAttempts ? "Yes — you rebuilt it." : "Exactly. The scene led you to the word.";
+    $("#recall-feedback").className = "recall-feedback correct";
+    pendingAnswer = recallAttempts ? "hard" : "got";
+    setTimeout(() => revealMeaning(pendingAnswer), 420);
+    return;
+  }
+
+  recallAttempts += 1;
+  input.classList.add("wrong");
+  $("#recall-feedback").textContent = recallAttempts >= 3 ? "Three tries. Reveal it now, then rebuild the scene." : "Not that word yet. Look once more at the scene.";
+  $("#recall-feedback").className = "recall-feedback wrong";
+  if (recallAttempts >= 3) $("#cant-recall").textContent = "Reveal the word and add one failed recall";
+  setTimeout(() => input.classList.remove("wrong"), 320);
+  input.select();
 }
 
 function answerWord(answer) {
@@ -280,19 +357,74 @@ function finishSession() {
 }
 
 function closeStudy() {
+  stopAudio();
   $("#study-overlay").classList.remove("open");
   $("#study-overlay").setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
 }
 
-function speakCurrentWord() {
+async function playPronunciation(accent, button) {
   const word = session[sessionIndex];
-  if (!word || !("speechSynthesis" in window)) return showToast("Speech is not available in this browser");
-  speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(word.word);
-  utterance.lang = "en-GB";
+  if (!word) return;
+  stopAudio();
+  $$("[data-accent]").forEach((item) => item.classList.toggle("playing", item.dataset.accent === accent));
+  $("#audio-status").textContent = `Playing ${accent === "gb" ? "British" : accent === "us" ? "American" : "Australian"} English…`;
+
+  const localUrl = `./audio/${encodeURIComponent(word.word.toLowerCase())}/${accent}.mp3`;
+  try {
+    await playAudioUrl(localUrl);
+  } catch {
+    try {
+      await playAudioUrl(`/api/speech?word=${encodeURIComponent(word.word)}&accent=${accent}`);
+    } catch {
+      try {
+        playBrowserVoice(word.word, accent);
+        $("#audio-status").textContent = "Using this device’s matching accent voice.";
+      } catch {
+        $("#audio-status").textContent = "No audio is available for this imported word yet.";
+        showToast("Generate or connect pronunciation audio for this imported word");
+      }
+    }
+  }
+
+  if (button) button.blur();
+}
+
+function playAudioUrl(url) {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio(url);
+    activeAudio = audio;
+    audio.addEventListener("canplaythrough", () => {
+      audio.play().then(resolve).catch(reject);
+    }, { once: true });
+    audio.addEventListener("error", reject, { once: true });
+    audio.addEventListener("ended", () => {
+      $$("[data-accent]").forEach((item) => item.classList.remove("playing"));
+      $("#audio-status").textContent = "Choose an accent to hear it again.";
+      activeAudio = null;
+    }, { once: true });
+    audio.load();
+  });
+}
+
+function playBrowserVoice(word, accent) {
+  if (!("speechSynthesis" in window)) throw new Error("Speech unavailable");
+  const locale = { gb: "en-GB", us: "en-US", au: "en-AU" }[accent];
+  const utterance = new SpeechSynthesisUtterance(word);
+  utterance.lang = locale;
   utterance.rate = .82;
+  const matching = speechSynthesis.getVoices().find((voice) => voice.lang.toLowerCase() === locale.toLowerCase());
+  if (matching) utterance.voice = matching;
   speechSynthesis.speak(utterance);
+}
+
+function stopAudio() {
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio = null;
+  }
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  $$("[data-accent]").forEach((item) => item.classList.remove("playing"));
 }
 
 async function revealChinese() {
@@ -303,6 +435,7 @@ async function revealChinese() {
   result.hidden = false;
   result.textContent = "Looking it up only because you asked…";
   const provider = state.settings.provider;
+  $$("[data-method-step]").forEach((step) => step.classList.toggle("active", step.dataset.methodStep === "3"));
 
   if (provider === "local") {
     result.textContent = word.chinese || "No local Chinese hint is stored for this word.";
@@ -321,7 +454,6 @@ async function revealChinese() {
 
 function syncSettingsForm() {
   $("#daily-goal").value = state.settings.goal;
-  $("#goal-output").textContent = state.settings.goal;
   $("#translation-provider").value = state.settings.provider;
   $$("input[name='bank']").forEach((input) => { input.checked = state.settings.banks.includes(input.value); });
 }
@@ -335,7 +467,8 @@ function saveSettings(event) {
   event.preventDefault();
   const banks = $$("input[name='bank']:checked").map((input) => input.value);
   if (!banks.length) return showToast("Keep at least one word bank active");
-  state.settings.goal = Number($("#daily-goal").value);
+  const requestedGoal = Math.round(Number($("#daily-goal").value));
+  state.settings.goal = Math.min(100000, Math.max(1, Number.isFinite(requestedGoal) ? requestedGoal : 20));
   state.settings.banks = banks;
   state.settings.provider = $("#translation-provider").value;
   saveState();
@@ -431,7 +564,7 @@ function normalizeImportedWord(item, index) {
     word, bank, definition, phonetic: item.phonetic || "", pos: item.pos || "word",
     topic: item.topic || "Imported", scene: item.scene || `Picture a real moment where “${word}” is happening.`,
     emoji: item.emoji || "💭", example: item.example || `Use “${word}” in a true sentence about your life.`,
-    source: item.source || "Licensed import", sourceUrl: item.sourceUrl || "", chinese: item.chinese || "",
+    image: item.image || "", video: item.video || "", source: item.source || "Licensed import", sourceUrl: item.sourceUrl || "", chinese: item.chinese || "",
   };
 }
 
@@ -462,14 +595,16 @@ function bindEvents() {
   $("#open-settings").addEventListener("click", openSettings);
   $("#header-settings").addEventListener("click", openSettings);
   $$('[data-open-settings]').forEach((button) => button.addEventListener("click", openSettings));
-  $("#daily-goal").addEventListener("input", (event) => { $("#goal-output").textContent = event.target.value; });
+  $$("[data-goal]").forEach((button) => button.addEventListener("click", () => { $("#daily-goal").value = button.dataset.goal; }));
   $("#save-settings").addEventListener("click", saveSettings);
   $("#start-session").addEventListener("click", () => startSession(getPlan().queue));
   $("#start-review").addEventListener("click", () => startSession(getDueWords(), "review"));
   $(".study-close").addEventListener("click", closeStudy);
-  $("#speak-word").addEventListener("click", speakCurrentWord);
+  $("#recall-form").addEventListener("submit", checkRecall);
+  $("#cant-recall").addEventListener("click", () => revealMeaning("forgot"));
+  $("#next-word").addEventListener("click", () => answerWord(pendingAnswer));
+  $$("[data-accent]").forEach((button) => button.addEventListener("click", () => playPronunciation(button.dataset.accent, button)));
   $("#reveal-chinese").addEventListener("click", revealChinese);
-  $$(".answer-button").forEach((button) => button.addEventListener("click", () => answerWord(button.dataset.answer)));
   $("#open-search").addEventListener("click", openSearch);
   $("#close-search").addEventListener("click", () => $("#search-dialog").close());
   $("#word-search").addEventListener("input", (event) => {
@@ -497,12 +632,7 @@ function bindEvents() {
 
   document.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); openSearch(); }
-    if ($("#study-overlay").classList.contains("open")) {
-      if (event.key === "1") answerWord("forgot");
-      if (event.key === "2") answerWord("hard");
-      if (event.key === "3") answerWord("got");
-      if (event.key === "Escape") closeStudy();
-    }
+    if ($("#study-overlay").classList.contains("open") && event.key === "Escape") closeStudy();
   });
 }
 

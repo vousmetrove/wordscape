@@ -169,44 +169,89 @@
       <main class="study-stage">
         <div class="study-card" id="study-card">
           <div class="word-meta"><span id="study-bank">CET-4</span><span id="study-status">NEW</span></div>
-          <div class="word-title-row"><div><h1 id="study-word">absorb</h1><p><span id="study-phonetic">/əbˈzɔːb/</span> · <span id="study-pos">verb</span></p></div><button class="speak-button" id="speak-word" type="button" aria-label="Hear pronunciation"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Zm11.5 6.5a5 5 0 0 0 0-7M18 18a9 9 0 0 0 0-12"/></svg></button></div>
 
-          <div class="scene-panel" id="scene-panel">
-            <span class="scene-emoji" id="scene-emoji">🧽</span>
-            <div><small>PICTURE THIS</small><p id="study-scene">A dry sponge slowly fills with water.</p></div>
-          </div>
+          <section class="recall-phase" id="recall-phase">
+            <div class="visual-media" id="visual-media">
+              <img id="study-image" alt="" hidden />
+              <video id="study-video" muted loop playsinline hidden></video>
+              <span class="scene-emoji" id="scene-emoji">🧽</span>
+              <span class="visual-label">LOOK · LISTEN · RECALL</span>
+            </div>
 
-          <div class="meaning-block">
-            <small>PLAIN ENGLISH</small>
-            <p id="study-definition">to take in a liquid, idea, or feeling</p>
-          </div>
+            <div class="recall-prompt">
+              <small>01 · BUILD THE WORD FROM THE SCENE</small>
+              <h1>What English word do you see?</h1>
+              <p id="letter-hint">6 letters</p>
+            </div>
 
-          <blockquote class="example-block">
-            <p id="study-example">The dry ground absorbed the rain in minutes.</p>
-            <footer><span id="study-source">Practice context · original</span><a id="study-source-link" href="#" target="_blank" rel="noreferrer" hidden>View source ↗</a></footer>
-          </blockquote>
+            <form class="recall-form" id="recall-form">
+              <input id="recall-input" type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Type the English word" placeholder="Type the word…" />
+              <button type="submit">Check <span>→</span></button>
+            </form>
+            <p class="recall-feedback" id="recall-feedback" aria-live="polite"></p>
 
-          <div class="chinese-reveal">
-            <button id="reveal-chinese" type="button"><span>中</span> I still need Chinese</button>
-            <p id="chinese-result" hidden></p>
-          </div>
+            <div class="accent-player" aria-label="Pronunciation accents">
+              <span>HEAR THE WORD</span>
+              <div>
+                <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
+                <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
+                <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
+              </div>
+              <p id="audio-status" aria-live="polite">Choose an accent to hear a real recording.</p>
+            </div>
+
+            <button class="cant-recall" id="cant-recall" type="button">I cannot recall it — show me</button>
+          </section>
+
+          <section class="meaning-phase" id="meaning-phase" hidden>
+            <div class="word-title-row">
+              <div><small>02 · UNDERSTAND IN SIMPLE ENGLISH</small><h1 id="study-word">absorb</h1><p><span id="study-phonetic">/əbˈzɔːb/</span> · <span id="study-pos">verb</span></p></div>
+            </div>
+
+            <div class="compact-accent-player accent-player">
+              <span>PRONUNCIATION</span>
+              <div>
+                <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
+                <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
+                <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
+              </div>
+            </div>
+
+            <div class="meaning-block">
+              <small>PLAIN ENGLISH</small>
+              <p id="study-definition">to take in a liquid, idea, or feeling</p>
+            </div>
+
+            <blockquote class="example-block">
+              <p id="study-example">The dry ground absorbed the rain in minutes.</p>
+              <footer><span id="study-source">Practice context · original</span><a id="study-source-link" href="#" target="_blank" rel="noreferrer" hidden>View source ↗</a></footer>
+            </blockquote>
+
+            <div class="chinese-reveal">
+              <button id="reveal-chinese" type="button"><span>中</span> 03 · Show Chinese only if I need it</button>
+              <p id="chinese-result" hidden></p>
+            </div>
+
+            <button class="next-word-button" id="next-word" type="button">Keep this meaning <span>→</span></button>
+          </section>
         </div>
 
-        <div class="answer-actions">
-          <p>Close your eyes. Can you see the scene and say the meaning?</p>
-          <div>
-            <button class="answer-button forgot" type="button" data-answer="forgot"><span>1</span><strong>I forgot</strong><small>Back tomorrow</small></button>
-            <button class="answer-button hard" type="button" data-answer="hard"><span>2</span><strong>Almost</strong><small>Shorter step</small></button>
-            <button class="answer-button got" type="button" data-answer="got"><span>3</span><strong>I see it</strong><small>Move forward</small></button>
-          </div>
-        </div>
+        <aside class="study-method">
+          <p class="eyebrow">THE THREE-LAYER METHOD</p>
+          <ol>
+            <li class="active" data-method-step="1"><span>01</span><div><strong>See, then recall</strong><small>A picture or video comes before any explanation.</small></div></li>
+            <li data-method-step="2"><span>02</span><div><strong>Understand simply</strong><small>One plain-English meaning. No repeated scene text.</small></div></li>
+            <li data-method-step="3"><span>03</span><div><strong>Chinese is optional</strong><small>Reveal it only when English is not enough.</small></div></li>
+          </ol>
+        </aside>
       </main>
     </section>
 
     <dialog class="settings-dialog" id="settings-dialog">
       <form method="dialog" id="settings-form">
         <div class="dialog-head"><div><p class="eyebrow">DAILY PLAN</p><h2>Make it fit your life.</h2></div><button value="cancel" aria-label="Close">×</button></div>
-        <label class="goal-field"><span>Words per day <small>reviews included</small></span><output id="goal-output">20</output><input type="range" id="daily-goal" min="5" max="60" step="5" value="20" /></label>
+        <label class="goal-field"><span>Words per day <small>reviews included · choose any amount</small></span><input type="number" id="daily-goal" min="1" step="1" value="20" inputmode="numeric" /></label>
+        <div class="goal-presets" aria-label="Quick daily goal choices"><button type="button" data-goal="20">20</button><button type="button" data-goal="50">50</button><button type="button" data-goal="100">100</button><button type="button" data-goal="200">200</button></div>
         <fieldset><legend>Active word banks</legend><label><input type="checkbox" name="bank" value="CET4" checked /><span><b>CET-4</b><small>College English Test Band 4</small></span></label><label><input type="checkbox" name="bank" value="CET6" checked /><span><b>CET-6</b><small>College English Test Band 6</small></span></label><label><input type="checkbox" name="bank" value="IELTS" checked /><span><b>IELTS</b><small>Academic and general vocabulary</small></span></label></fieldset>
         <fieldset><legend>Chinese fallback</legend><label class="select-label"><span>Translation provider</span><select id="translation-provider"><option value="youdao">Youdao API</option><option value="oxford">Oxford Languages API</option><option value="local">Local seed hints</option></select></label><p class="field-note">API keys stay in server environment variables. Chinese is only requested after you click for it.</p></fieldset>
         <menu><button value="cancel" class="secondary-button">Cancel</button><button value="default" class="primary-button" id="save-settings">Save plan</button></menu>
