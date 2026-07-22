@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Learn English through simple English, vivid scenes, and memory-aware review." />
+    <meta name="theme-color" content="#f3f0e8" />
+    <title>Wordscape — Think in English</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#" aria-label="Wordscape home">
+          <span class="brand-mark">w</span>
+          <span>wordscape</span>
+        </a>
+
+        <nav class="side-nav" aria-label="Main navigation">
+          <button class="nav-item active" type="button" data-view="today">
+            <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V21h-6v-6H9v6H3v-9.5Z" /></svg>
+            <span>Today</span>
+          </button>
+          <button class="nav-item" type="button" data-view="review">
+            <svg viewBox="0 0 24 24"><path d="M4 4v6h6M5.5 15a7 7 0 1 0 .7-7.9L4 10" /></svg>
+            <span>Review</span><b id="review-nav-count">0</b>
+          </button>
+          <button class="nav-item" type="button" data-view="mistakes">
+            <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6V3Zm3 6h6m-6 4h6m-6 4h3" /></svg>
+            <span>Mistake book</span><b id="mistake-nav-count">0</b>
+          </button>
+          <button class="nav-item" type="button" data-view="banks">
+            <svg viewBox="0 0 24 24"><path d="M4 5.5C6 4.5 8 4 10 4c1.5 0 2.5.4 2.5 1.4V20c0-1.1-1-1.5-2.5-1.5-2 0-4 .5-6 1.5V5.5Zm16 0C18 4.5 16 4 14 4c-.6 0-1.1.1-1.5.3" /></svg>
+            <span>Word banks</span>
+          </button>
+          <button class="nav-item" type="button" data-view="progress">
+            <svg viewBox="0 0 24 24"><path d="M5 20V10m7 10V4m7 16v-7" /></svg>
+            <span>Progress</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-idea">
+          <span class="idea-orb">✦</span>
+          <p><strong>One useful rule</strong>Do not translate first. Build a scene first.</p>
+        </div>
+
+        <button class="profile-button" type="button" id="open-settings">
+          <span class="avatar">Y</span>
+          <span><strong>Your plan</strong><small id="profile-goal">20 words a day</small></span>
+          <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <button class="mobile-menu" type="button" aria-label="Open navigation">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+          <div class="date-lockup"><span id="today-label">Tuesday</span><small id="date-label">July 22</small></div>
+          <div class="topbar-actions">
+            <button class="search-button" type="button" id="open-search" aria-label="Search words">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
+              <span>Find a word</span><kbd>⌘ K</kbd>
+            </button>
+            <button class="icon-button" type="button" id="header-settings" aria-label="Open settings">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="view-container">
+          <section class="view active" id="view-today" data-view-panel="today">
+            <div class="hero-copy">
+              <p class="eyebrow">TODAY’S PRACTICE</p>
+              <h1>See the meaning.<br /><em>Skip the <span class="mobile-word">translation.</span></em></h1>
+              <p>Every word starts as a small scene in your mind. Chinese stays hidden unless you truly need it.</p>
+            </div>
+
+            <section class="today-grid">
+              <article class="plan-card">
+                <div class="plan-card-head">
+                  <div>
+                    <span class="card-kicker">YOUR DAILY MIX</span>
+                    <h2><span id="plan-total">20</span> words, one clear session.</h2>
+                  </div>
+                  <button class="mini-settings" type="button" data-open-settings>Adjust goal</button>
+                </div>
+
+                <div class="mix-visual" aria-label="Daily plan breakdown">
+                  <div class="mix-numbers">
+                    <span><strong id="due-count">0</strong><small>due review</small></span>
+                    <span><strong id="new-count">20</strong><small>new words</small></span>
+                  </div>
+                  <div class="mix-bar"><i class="review-fill"></i><i class="new-fill"></i></div>
+                  <p id="mix-explanation">No review is due yet, so today is all new words.</p>
+                </div>
+
+                <div class="plan-bottom">
+                  <div class="selected-banks" id="selected-banks"></div>
+                  <button class="start-button" type="button" id="start-session">Begin today’s session <span>→</span></button>
+                </div>
+              </article>
+
+              <aside class="curve-card">
+                <div class="curve-head"><span class="curve-icon">⌁</span><span><small>MEMORY CURVE</small><strong>Reviews arrive before you forget.</strong></span></div>
+                <svg class="curve-chart" viewBox="0 0 320 125" aria-label="Ebbinghaus review curve">
+                  <defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#82964b" stop-opacity=".28"/><stop offset="1" stop-color="#82964b" stop-opacity="0"/></linearGradient></defs>
+                  <path class="area" d="M8 20C42 82 67 101 90 104C113 49 137 44 162 96C184 57 209 54 233 91C259 66 282 65 312 84V118H8Z"/>
+                  <path class="line" d="M8 20C42 82 67 101 90 104C113 49 137 44 162 96C184 57 209 54 233 91C259 66 282 65 312 84"/>
+                  <g><circle cx="90" cy="104" r="4"/><circle cx="162" cy="96" r="4"/><circle cx="233" cy="91" r="4"/></g>
+                </svg>
+                <div class="curve-labels"><span>Learn</span><span>1d</span><span>3d</span><span>7d</span><span>15d</span></div>
+                <p>Review words take the first seats inside your daily goal. New words fill what remains.</p>
+              </aside>
+            </section>
+
+            <section class="bank-preview">
+              <div class="section-heading">
+                <div><p class="eyebrow">YOUR WORD BANKS</p><h2>Choose the English you need.</h2></div>
+                <button type="button" data-go-view="banks">See all banks <span>→</span></button>
+              </div>
+              <div class="bank-cards" id="bank-preview-cards"></div>
+            </section>
+          </section>
+
+          <section class="view" id="view-review" data-view-panel="review">
+            <div class="page-heading"><p class="eyebrow">SPACED REVIEW</p><h1>Right before<br /><em>it fades.</em></h1><p>Your review queue follows six recall steps: 1, 2, 4, 7, 15, and 30 days.</p></div>
+            <div class="empty-state" id="review-empty"><span>⌁</span><h2>Your mind is clear.</h2><p>No words are due right now. New review cards appear automatically.</p><button type="button" data-go-view="today">Learn new words</button></div>
+            <div class="word-table-wrap" id="review-list-wrap" hidden><div class="list-head"><span>Word</span><span>Next step</span><span>Recall</span></div><div id="review-list"></div><button class="primary-button" id="start-review" type="button">Review due words</button></div>
+          </section>
+
+          <section class="view" id="view-mistakes" data-view-panel="mistakes">
+            <div class="page-heading"><p class="eyebrow">MISTAKE BOOK</p><h1>Words that need<br /><em>a stronger scene.</em></h1><p>A word enters this book after three failed recalls. Master it here and it leaves.</p></div>
+            <div class="mistake-grid" id="mistake-grid"></div>
+            <div class="empty-state" id="mistake-empty"><span>✓</span><h2>No stubborn words yet.</h2><p>Three “I forgot” answers will move a word here automatically.</p></div>
+          </section>
+
+          <section class="view" id="view-banks" data-view-panel="banks">
+            <div class="page-heading compact"><p class="eyebrow">WORD BANKS</p><h1>Learn by purpose,<br /><em>not by alphabet.</em></h1><p>Exam lists stay separate, while shared words keep one memory record.</p></div>
+            <div class="full-bank-grid" id="full-bank-grid"></div>
+            <article class="import-card">
+              <div class="import-icon">↓</div>
+              <div><span class="card-kicker">LICENSED DATA IMPORT</span><h2>Bring your own authorised word book.</h2><p>Import JSON or CSV with word, simple definition, scene, sentence, and source fields. This is the safe path for licensed IELTS 真经 content and authentic exam sentences.</p></div>
+              <label class="import-button">Choose a file<input type="file" id="word-import" accept=".json,.csv" hidden /></label>
+            </article>
+          </section>
+
+          <section class="view" id="view-progress" data-view-panel="progress">
+            <div class="page-heading compact"><p class="eyebrow">YOUR PROGRESS</p><h1>Meaning that<br /><em>stays with you.</em></h1></div>
+            <div class="stats-grid">
+              <article><span>Words met</span><strong id="stat-met">0</strong><small>Across every bank</small></article>
+              <article><span>Growing strong</span><strong id="stat-strong">0</strong><small>Stage 3 or higher</small></article>
+              <article><span>Recall rate</span><strong id="stat-rate">—</strong><small>From all answers</small></article>
+              <article><span>Current streak</span><strong id="stat-streak">0d</strong><small>Keep showing up</small></article>
+            </div>
+            <article class="schedule-card"><div><span class="card-kicker">UPCOMING REVIEW LOAD</span><h2>Your next seven days</h2></div><div class="schedule-bars" id="schedule-bars"></div></article>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <section class="study-overlay" id="study-overlay" aria-hidden="true">
+      <header class="study-header">
+        <button class="study-close" type="button" aria-label="Leave study session">×</button>
+        <div class="study-progress"><span id="study-mode-label">TODAY’S MIX</span><div><i id="study-progress-fill"></i></div><small><b id="study-index">1</b> / <span id="study-total">20</span></small></div>
+        <button class="study-more" type="button" aria-label="More options">•••</button>
+      </header>
+      <main class="study-stage">
+        <div class="study-card" id="study-card">
+          <div class="word-meta"><span id="study-bank">CET-4</span><span id="study-status">NEW</span></div>
+          <div class="word-title-row"><div><h1 id="study-word">absorb</h1><p><span id="study-phonetic">/əbˈzɔːb/</span> · <span id="study-pos">verb</span></p></div><button class="speak-button" id="speak-word" type="button" aria-label="Hear pronunciation"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Zm11.5 6.5a5 5 0 0 0 0-7M18 18a9 9 0 0 0 0-12"/></svg></button></div>
+
+          <div class="scene-panel" id="scene-panel">
+            <span class="scene-emoji" id="scene-emoji">🧽</span>
+            <div><small>PICTURE THIS</small><p id="study-scene">A dry sponge slowly fills with water.</p></div>
+          </div>
+
+          <div class="meaning-block">
+            <small>PLAIN ENGLISH</small>
+            <p id="study-definition">to take in a liquid, idea, or feeling</p>
+          </div>
+
+          <blockquote class="example-block">
+            <p id="study-example">The dry ground absorbed the rain in minutes.</p>
+            <footer><span id="study-source">Practice context · original</span><a id="study-source-link" href="#" target="_blank" rel="noreferrer" hidden>View source ↗</a></footer>
+          </blockquote>
+
+          <div class="chinese-reveal">
+            <button id="reveal-chinese" type="button"><span>中</span> I still need Chinese</button>
+            <p id="chinese-result" hidden></p>
+          </div>
+        </div>
+
+        <div class="answer-actions">
+          <p>Close your eyes. Can you see the scene and say the meaning?</p>
+          <div>
+            <button class="answer-button forgot" type="button" data-answer="forgot"><span>1</span><strong>I forgot</strong><small>Back tomorrow</small></button>
+            <button class="answer-button hard" type="button" data-answer="hard"><span>2</span><strong>Almost</strong><small>Shorter step</small></button>
+            <button class="answer-button got" type="button" data-answer="got"><span>3</span><strong>I see it</strong><small>Move forward</small></button>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <dialog class="settings-dialog" id="settings-dialog">
+      <form method="dialog" id="settings-form">
+        <div class="dialog-head"><div><p class="eyebrow">DAILY PLAN</p><h2>Make it fit your life.</h2></div><button value="cancel" aria-label="Close">×</button></div>
+        <label class="goal-field"><span>Words per day <small>reviews included</small></span><output id="goal-output">20</output><input type="range" id="daily-goal" min="5" max="60" step="5" value="20" /></label>
+        <fieldset><legend>Active word banks</legend><label><input type="checkbox" name="bank" value="CET4" checked /><span><b>CET-4</b><small>College English Test Band 4</small></span></label><label><input type="checkbox" name="bank" value="CET6" checked /><span><b>CET-6</b><small>College English Test Band 6</small></span></label><label><input type="checkbox" name="bank" value="IELTS" checked /><span><b>IELTS</b><small>Academic and general vocabulary</small></span></label></fieldset>
+        <fieldset><legend>Chinese fallback</legend><label class="select-label"><span>Translation provider</span><select id="translation-provider"><option value="youdao">Youdao API</option><option value="oxford">Oxford Languages API</option><option value="local">Local seed hints</option></select></label><p class="field-note">API keys stay in server environment variables. Chinese is only requested after you click for it.</p></fieldset>
+        <menu><button value="cancel" class="secondary-button">Cancel</button><button value="default" class="primary-button" id="save-settings">Save plan</button></menu>
+      </form>
+    </dialog>
+
+    <dialog class="search-dialog" id="search-dialog">
+      <div class="search-field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><input id="word-search" type="search" placeholder="Type an English word…" autocomplete="off"/><button type="button" id="close-search">ESC</button></div>
+      <div class="search-results" id="search-results"><p>Search by spelling. Meanings stay in simple English.</p></div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
