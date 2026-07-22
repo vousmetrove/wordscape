@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Learn English through simple English, spoken retrieval, personal sentences, and memory-aware review." />
+    <meta name="description" content="Learn English through simple definitions, natural examples, optional Chinese, and adaptive review." />
     <meta name="theme-color" content="#f3f0e8" />
     <title>Wordscape — Think in English</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
@@ -74,7 +74,7 @@
             <div class="hero-copy">
               <p class="eyebrow">TODAY’S PRACTICE</p>
               <h1>See the meaning.<br /><em>Skip the <span class="mobile-word">translation.</span></em></h1>
-              <p>Hear it, understand it, retrieve it, and use it once. Chinese stays hidden unless you truly need it.</p>
+              <p>Hear it, understand it, and tell Wordscape how familiar it feels. Chinese stays hidden unless you truly need it.</p>
             </div>
 
             <section class="today-grid">
@@ -110,7 +110,7 @@
                   <path class="line" d="M8 20C42 82 67 101 90 104C113 49 137 44 162 96C184 57 209 54 233 91C259 66 282 65 312 84"/>
                   <g><circle cx="90" cy="104" r="4"/><circle cx="162" cy="96" r="4"/><circle cx="233" cy="91" r="4"/></g>
                 </svg>
-                <div class="curve-labels"><span>Learn</span><span>1d</span><span>3d</span><span>7d</span><span>15d</span></div>
+                <div class="curve-labels"><span>Learn</span><span>Soon</span><span>Adapt</span><span>Later</span><span>Stable</span></div>
                 <p>Audio reviews reserve the first seats inside your daily goal. New learning stays in its own space.</p>
               </aside>
             </section>
@@ -131,7 +131,7 @@
           </section>
 
           <section class="view" id="view-mistakes" data-view-panel="mistakes">
-            <div class="page-heading"><p class="eyebrow">MISTAKE BOOK</p><h1>Words that need<br /><em>another useful link.</em></h1><p>A word enters this book after three failed recalls. Learn and use it again here.</p></div>
+            <div class="page-heading"><p class="eyebrow">MISTAKE BOOK</p><h1>Words that need<br /><em>another useful link.</em></h1><p>A word enters this book after three failed recalls. Study it again here.</p></div>
             <div class="mistake-grid" id="mistake-grid"></div>
             <div class="empty-state" id="mistake-empty"><span>✓</span><h2>No stubborn words yet.</h2><p>Three “I forgot” answers will move a word here automatically.</p></div>
           </section>
@@ -169,77 +169,46 @@
       <main class="study-stage">
         <div class="study-card" id="study-card">
           <section class="learning-card" id="learning-card">
-            <section class="learning-phase" id="learn-understand">
-              <div class="word-meta"><span id="study-bank">CET-4</span><span id="study-status">NEW</span><span>1 · UNDERSTAND</span></div>
+            <div class="word-meta"><span id="study-bank">CET-4</span><span id="study-status">NEW</span><span>ENGLISH FIRST</span></div>
 
-              <div class="word-title-row learning-word-title">
-                <div><small>MEET THE WORD IN ENGLISH</small><h1 id="study-word">absorb</h1><p><span id="study-phonetic">/əbˈzɔːb/</span> · <span id="study-pos">verb</span></p></div>
-              </div>
+            <div class="word-title-row learning-word-title">
+              <div><small>MEET THE WORD</small><h1 id="study-word">absorb</h1><p><span id="study-phonetic">/əbˈzɔːb/</span> · <span id="study-pos">verb</span></p></div>
+            </div>
 
-              <div class="accent-player" aria-label="Pronunciation accents">
-                <span>HEAR AT LEAST ONE ACCENT</span>
-                <div>
-                  <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
-                  <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
-                  <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
-                </div>
-                <p data-audio-status aria-live="polite">Choose an accent before the recall step opens.</p>
+            <div class="accent-player" aria-label="Pronunciation accents">
+              <span>PRONUNCIATION</span>
+              <div>
+                <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
+                <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
+                <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
               </div>
+              <p data-audio-status aria-live="polite">Choose any accent. Compare them only when useful.</p>
+            </div>
 
-              <div class="meaning-block">
-                <small>SIMPLE ENGLISH</small>
-                <p id="study-definition">to take in a liquid, idea, or feeling</p>
-              </div>
+            <div class="meaning-block">
+              <small>SIMPLE ENGLISH</small>
+              <p id="study-definition">to take in a liquid, idea, or feeling</p>
+            </div>
 
-              <blockquote class="example-block">
-                <p id="study-example">The dry ground absorbed the rain in minutes.</p>
-                <footer><span id="study-source">Practice context · original</span><a id="study-source-link" href="#" target="_blank" rel="noreferrer" hidden>View source ↗</a></footer>
-              </blockquote>
+            <blockquote class="example-block">
+              <p id="study-example">The dry ground absorbed the rain in minutes.</p>
+              <footer><span id="study-source">Practice context · original</span><a id="study-source-link" href="#" target="_blank" rel="noreferrer" hidden>View source ↗</a></footer>
+            </blockquote>
 
-              <div class="chinese-reveal">
-                <button id="reveal-chinese" type="button"><span>中</span> Show Chinese only if I need it</button>
-                <p id="chinese-result" hidden></p>
-              </div>
+            <div class="chinese-reveal">
+              <button id="reveal-chinese" type="button"><span>中</span> Show Chinese only if I need it</button>
+              <p id="chinese-result" hidden></p>
+            </div>
 
-              <button class="next-word-button" id="start-learning-recall" type="button" disabled>Hear one accent to continue <span>→</span></button>
-            </section>
-
-            <section class="learning-phase learning-recall" id="learn-recall" hidden>
-              <div class="word-meta"><span id="recall-bank">CET-4</span><span>2 · RETRIEVE</span></div>
-              <div class="learning-prompt">
-                <small>NO SCORE · NO TYPING · NO CHINESE</small>
-                <h1>Say the word.<br />Then explain it simply.</h1>
-                <p>The spelling and definition are hidden. Try to rebuild both from memory before you continue.</p>
+            <div class="familiarity-check">
+              <div><small>BE HONEST — THIS TRAINS YOUR SCHEDULE</small><h2>How familiar does it feel now?</h2></div>
+              <div class="familiarity-actions">
+                <button type="button" data-learning-rating="again"><strong>Still new</strong><small>Show it again soon</small></button>
+                <button type="button" data-learning-rating="good"><strong>Starting to stick</strong><small>Normal first review</small></button>
+                <button type="button" data-learning-rating="easy"><strong>Already familiar</strong><small>Give it more space</small></button>
               </div>
-              <div class="accent-player recall-audio" aria-label="Pronunciation accents">
-                <span>REPLAY ONLY IF YOU NEED IT</span>
-                <div>
-                  <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
-                  <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
-                  <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
-                </div>
-                <p data-audio-status aria-live="polite">Say the word and its easy English meaning aloud.</p>
-              </div>
-              <button class="next-word-button" id="confirm-learning-recall" type="button">I said the word and meaning <span>→</span></button>
-            </section>
-
-            <section class="learning-phase learning-use" id="learn-use" hidden>
-              <div class="word-meta"><span id="use-bank">CET-4</span><span>3 · USE IT</span></div>
-              <div class="use-word">
-                <small>MAKE ONE PERSONAL CONNECTION</small>
-                <h1 id="use-word">absorb</h1>
-                <p id="use-definition">to take in a liquid, idea, or feeling</p>
-              </div>
-              <label class="sentence-builder" for="personal-sentence">
-                <span>Write one short English sentence using the word or a natural form of it.</span>
-                <textarea id="personal-sentence" rows="3" spellcheck="true" placeholder="A short sentence about your life…"></textarea>
-              </label>
-              <p class="sentence-feedback" id="sentence-feedback" aria-live="polite">Use the word and at least three other English words.</p>
-              <div class="learning-use-actions">
-                <button class="secondary-learning-button" id="repeat-learning" type="button">Learn it once more</button>
-                <button class="next-word-button" id="finish-learning" type="button" disabled>Save my sentence <span>→</span></button>
-              </div>
-            </section>
+              <p id="schedule-preview" aria-live="polite">Your choice changes this word's next review.</p>
+            </div>
           </section>
 
           <section class="assessment-card" id="assessment-card" hidden>
@@ -276,9 +245,9 @@
         </div>
 
         <aside class="study-method" id="study-guide">
-          <p class="eyebrow" id="guide-kicker">ACTIVE LEARNING</p>
-          <h2 id="guide-title">Understand before you retrieve.</h2>
-          <p id="guide-copy">First hear and understand the word. Then close the answer, say it from memory, and use it in one short sentence.</p>
+          <p class="eyebrow" id="guide-kicker">YOUR MEMORY MODEL</p>
+          <h2 id="guide-title">You judge; Wordscape schedules.</h2>
+          <p id="guide-copy">Simple English and one clear example do the teaching. Your honest familiarity choice teaches the planner when this word should return.</p>
           <div class="guide-note"><span>中</span><p><strong>Chinese stays optional.</strong><small>Open it only when simple English is not enough.</small></p></div>
         </aside>
       </main>
@@ -290,6 +259,7 @@
         <label class="goal-field"><span>Words per day <small>reviews included · choose any amount</small></span><input type="number" id="daily-goal" min="1" step="1" value="20" inputmode="numeric" /></label>
         <div class="goal-presets" aria-label="Quick daily goal choices"><button type="button" data-goal="20">20</button><button type="button" data-goal="50">50</button><button type="button" data-goal="100">100</button><button type="button" data-goal="200">200</button></div>
         <fieldset><legend>Active word banks</legend><label><input type="checkbox" name="bank" value="CET4" checked /><span><b>CET-4</b><small>College English Test Band 4</small></span></label><label><input type="checkbox" name="bank" value="CET6" checked /><span><b>CET-6</b><small>College English Test Band 6</small></span></label><label><input type="checkbox" name="bank" value="IELTS" checked /><span><b>IELTS</b><small>Academic and general vocabulary</small></span></label></fieldset>
+        <fieldset><legend>Personal memory model</legend><p class="field-note">Wordscape learns only from your activity on this device: familiarity choices, review success, response time, Chinese reveals, and accent plays. This history stays in your browser.</p></fieldset>
         <fieldset><legend>Chinese fallback</legend><label class="select-label"><span>Translation provider</span><select id="translation-provider"><option value="youdao">Youdao API</option><option value="oxford">Oxford Languages API</option><option value="local">Local seed hints</option></select></label><p class="field-note">API keys stay in server environment variables. Chinese is only requested after you click for it.</p></fieldset>
         <menu><button value="cancel" class="secondary-button">Cancel</button><button value="default" class="primary-button" id="save-settings">Save plan</button></menu>
       </form>

@@ -6,6 +6,14 @@ const defaultState = {
   settings: { goal: 20, banks: ["CET4", "CET6", "IELTS"], provider: "youdao" },
   records: {},
   stats: { answers: 0, correct: 0, streak: 0, lastStudy: null },
+  memoryProfile: {
+    reviewEvents: 0,
+    successfulReviews: 0,
+    totalResponseMs: 0,
+    chineseReveals: 0,
+    learningRatings: { again: 0, good: 0, easy: 0 },
+    accentPlays: { gb: 0, us: 0, au: 0 },
+  },
   customWords: [],
 };
 
@@ -17,7 +25,8 @@ let sessionMode = "learn";
 let toastTimer;
 let searchTimer;
 let activeAudio = null;
-let learningHeard = false;
+let wordStartedAt = Date.now();
+let chineseUsedThisWord = false;
 
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
@@ -30,6 +39,12 @@ function loadState() {
       ...saved,
       settings: { ...defaultState.settings, ...(saved.settings || {}) },
       stats: { ...defaultState.stats, ...(saved.stats || {}) },
+      memoryProfile: {
+        ...defaultState.memoryProfile,
+        ...(saved.memoryProfile || {}),
+        learningRatings: { ...defaultState.memoryProfile.learningRatings, ...(saved.memoryProfile?.learningRatings || {}) },
+        accentPlays: { ...defaultState.memoryProfile.accentPlays, ...(saved.memoryProfile?.accentPlays || {}) },
+      },
       records: saved.records || {},
       customWords: saved.customWords || [],
     };
@@ -51,6 +66,72 @@ function addDays(key, days) {
   const date = new Date(`${key}T12:00:00`);
   date.setDate(date.getDate() + days);
   return dateKey(date);
+}
+
+function daysBetween(from, to) {
+  if (!from) return 1;
+  return Math.max(0, Math.round((new Date(`${to}T12:00:00`) - new Date(`${from}T12:00:00`)) / DAY));
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function normalizeRecord(record = {}) {
+  const stage = Number.isFinite(record.stage) ? record.stage : 0;
+  return {
+    seen: false,
+    stage,
+    failures: 0,
+    attempts: 0,
+    correct: 0,
+    inMistake: false,
+    ...record,
+    difficulty: clamp(Number(record.difficulty) || 5, 1, 10),
+    stability: Math.max(.35, Number(record.stability) || REVIEW_INTERVALS[Math.min(stage, REVIEW_INTERVALS.length - 1)] || 1),
+    history: Array.isArray(record.history) ? record.history : [],
+  };
+}
+
+function memoryPaceFactor() {
+  const profile = state.memoryProfile;
+  if (profile.reviewEvents < 5) return 1;
+  const choices = profile.learningRatings.again + profile.learningRatings.good + profile.learningRatings.easy;
+  const decisions = Math.max(1, profile.reviewEvents + choices);
+  const recallRate = profile.successfulReviews / profile.reviewEvents;
+  const hintRate = choices ? profile.chineseReveals / choices : 0;
+  const familiarRate = choices ? profile.learningRatings.easy / choices : 0;
+  const uncertainRate = choices ? profile.learningRatings.again / choices : 0;
+  const averageSeconds = profile.totalResponseMs / decisions / 1000;
+  const accentPlays = Object.values(profile.accentPlays).reduce((sum, count) => sum + count, 0);
+  const audioPerDecision = accentPlays / decisions;
+  const slowPenalty = clamp((averageSeconds - 15) / 100, 0, .08);
+  const audioPenalty = clamp((audioPerDecision - 1.5) * .02, 0, .05);
+  return clamp(
+    .84 + recallRate * .34 + familiarRate * .06 - uncertainRate * .08 - hintRate * .06 - slowPenalty - audioPenalty,
+    .75,
+    1.2,
+  );
+}
+
+function stabilityStage(stability) {
+  if (stability >= 30) return 5;
+  if (stability >= 15) return 4;
+  if (stability >= 7) return 3;
+  if (stability >= 3) return 2;
+  if (stability >= 1) return 1;
+  return 0;
+}
+
+function addHistory(record, event) {
+  record.history = [...(record.history || []), event].slice(-60);
+}
+
+function memoryInsight() {
+  const profile = state.memoryProfile;
+  if (profile.reviewEvents < 5) return `Calibration is starting. ${5 - profile.reviewEvents} more review choices will make the schedule more personal.`;
+  const rate = Math.round((profile.successfulReviews / profile.reviewEvents) * 100);
+  return `Your observed recall rate is ${rate}%. Wordscape is adjusting each word's difficulty and stability locally on this device.`;
 }
 
 function activeWords() {
@@ -165,7 +246,7 @@ function renderMistakes() {
   $("#mistake-empty").hidden = mistakes.length > 0;
   $("#mistake-grid").innerHTML = mistakes.map((word) => {
     const record = getRecord(word.id);
-    return `<article class="mistake-card"><span>${word.bank.replace("CET", "CET-")} · ${record.failures} FAILED RECALLS</span><h3>${word.word}</h3><p>${word.definition}</p><button type="button" data-practice-word="${word.id}">Learn and use it again →</button></article>`;
+    return `<article class="mistake-card"><span>${word.bank.replace("CET", "CET-")} · ${record.failures} FAILED RECALLS</span><h3>${word.word}</h3><p>${word.definition}</p><button type="button" data-practice-word="${word.id}">Study it again →</button></article>`;
   }).join("");
 }
 
@@ -216,8 +297,10 @@ function startSession(queue, mode = "learn") {
 
 function renderStudyWord() {
   const word = session[sessionIndex];
-  const record = getRecord(word.id);
+  const record = getRecord(word.id) ? normalizeRecord(getRecord(word.id)) : null;
   const isAssessment = sessionMode === "assessment";
+  wordStartedAt = Date.now();
+  chineseUsedThisWord = false;
   $("#study-index").textContent = sessionIndex + 1;
   $("#study-progress-fill").style.width = `${(sessionIndex / session.length) * 100}%`;
   $("#study-bank").textContent = word.bank.replace("CET", "CET-");
@@ -232,108 +315,76 @@ function renderStudyWord() {
   $("#study-source").textContent = word.source || "Imported word bank";
   $("#study-source-link").hidden = !word.sourceUrl;
   $("#study-source-link").href = word.sourceUrl || "#";
-  $("#recall-bank").textContent = word.bank.replace("CET", "CET-");
-  $("#use-bank").textContent = word.bank.replace("CET", "CET-");
-  $("#use-word").textContent = word.word;
-  $("#use-definition").textContent = word.definition;
   $("#chinese-result").hidden = true;
   $("#chinese-result").textContent = "";
   $("#reveal-chinese").disabled = false;
-  $("#personal-sentence").value = "";
-  $("#sentence-feedback").textContent = "Use the word and at least three other English words.";
-  $("#sentence-feedback").className = "sentence-feedback";
-  $("#finish-learning").disabled = true;
-  $("#start-learning-recall").disabled = true;
-  $("#start-learning-recall").innerHTML = "Hear one accent to continue <span>→</span>";
-  learningHeard = false;
+  $("#schedule-preview").textContent = "Your choice changes this word's next review.";
   stopAudio();
   $("#learning-card").hidden = isAssessment;
   $("#assessment-card").hidden = !isAssessment;
   $("#meaning-question").hidden = true;
   $("#confirm-repeat").hidden = false;
   $(".guide-note").hidden = isAssessment;
-  setAudioStatus(isAssessment ? "Play an accent, then repeat the word aloud." : "Choose an accent to hear a real recording.");
+  setAudioStatus(isAssessment ? "Play an accent, then repeat the word aloud." : "Choose any accent. Compare them only when useful.");
 
   if (isAssessment) {
     $("#guide-kicker").textContent = "A SEPARATE RECALL SPACE";
     $("#guide-title").textContent = "Your voice does the work.";
     $("#guide-copy").textContent = "Listen without seeing the spelling, repeat the sound aloud, then decide whether the meaning is present in your mind.";
   } else {
-    showLearningPhase("understand");
+    $("#guide-kicker").textContent = "YOUR MEMORY MODEL";
+    $("#guide-title").textContent = "You judge; Wordscape schedules.";
+    $("#guide-copy").textContent = memoryInsight();
   }
   $("#study-card").animate([{ opacity: .55, transform: "translateY(5px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 240 });
 }
 
-function showLearningPhase(phase) {
-  $("#learn-understand").hidden = phase !== "understand";
-  $("#learn-recall").hidden = phase !== "recall";
-  $("#learn-use").hidden = phase !== "use";
-  $(".guide-note").hidden = phase !== "understand";
-  stopAudio();
-
-  if (phase === "understand") {
-    $("#guide-kicker").textContent = "1 · UNDERSTAND";
-    $("#guide-title").textContent = "Make the meaning clear.";
-    $("#guide-copy").textContent = "Hear one accent, read one simple English meaning, and notice how the word works in a real sentence.";
-    setAudioStatus(learningHeard ? "You can compare another accent or continue." : "Choose an accent before the recall step opens.");
-  } else if (phase === "recall") {
-    $("#guide-kicker").textContent = "2 · RETRIEVE";
-    $("#guide-title").textContent = "Close the answer and rebuild it.";
-    $("#guide-copy").textContent = "Say the word and explain its meaning aloud from memory. This is practice, not a score.";
-    setAudioStatus("Say the word and its easy English meaning aloud.");
-  } else {
-    $("#guide-kicker").textContent = "3 · USE IT";
-    $("#guide-title").textContent = "Give the word a job.";
-    $("#guide-copy").textContent = "A short sentence you create makes the word more useful and gives memory another route back.";
-  }
-}
-
-function openLearningRecall() {
-  if (!learningHeard) return showToast("Hear at least one accent first");
-  showLearningPhase("recall");
-}
-
-function openLearningUse() {
-  showLearningPhase("use");
-  setTimeout(() => $("#personal-sentence").focus(), 80);
-}
-
-function validatePersonalSentence() {
-  const word = session[sessionIndex]?.word || "";
-  const value = $("#personal-sentence").value.trim();
-  const tokens = value.match(/[A-Za-z]+(?:'[A-Za-z]+)?/g) || [];
-  const target = word.toLowerCase();
-  const targetStem = target.slice(0, Math.max(3, target.length - 2));
-  const hasWord = tokens.some((token) => {
-    const normalized = token.toLowerCase();
-    return normalized === target || normalized.startsWith(targetStem);
-  });
-  const valid = tokens.length >= 4 && hasWord;
-  $("#finish-learning").disabled = !valid;
-
-  if (!value) {
-    $("#sentence-feedback").textContent = "Use the word and at least three other English words.";
-    $("#sentence-feedback").className = "sentence-feedback";
-  } else if (!hasWord) {
-    $("#sentence-feedback").textContent = `Include “${word}” or a natural form of it.`;
-    $("#sentence-feedback").className = "sentence-feedback needs-work";
-  } else if (tokens.length < 4) {
-    $("#sentence-feedback").textContent = "Add a few more words to make a complete idea.";
-    $("#sentence-feedback").className = "sentence-feedback needs-work";
-  } else {
-    $("#sentence-feedback").textContent = "Good — this sentence is your personal memory link.";
-    $("#sentence-feedback").className = "sentence-feedback ready";
-  }
-}
-
-function completeLearningWord() {
+function rateLearningWord(rating) {
   const word = session[sessionIndex];
   const today = dateKey();
-  const record = state.records[word.id] || { seen: false, stage: 0, failures: 0, attempts: 0, correct: 0, inMistake: false };
+  const record = normalizeRecord(state.records[word.id]);
+  const firstMeeting = !record.seen;
+  const pace = memoryPaceFactor();
+  const config = {
+    again: { difficulty: 8, stability: .5, interval: 1 },
+    good: { difficulty: 5, stability: 1, interval: 1 },
+    easy: { difficulty: 3, stability: 4, interval: 4 },
+  }[rating];
+
   record.seen = true;
   record.lastReviewed = today;
-  record.personalSentence = $("#personal-sentence").value.trim();
-  if (!record.nextReview) record.nextReview = addDays(today, 1);
+  record.lastLearningRating = rating;
+  record.difficulty = firstMeeting
+    ? config.difficulty
+    : clamp(record.difficulty + (rating === "again" ? .7 : rating === "easy" ? -.5 : -.1), 1, 10);
+  record.stability = firstMeeting
+    ? config.stability
+    : Math.max(.35, record.stability * (rating === "again" ? .65 : rating === "easy" ? 1.5 : 1.08));
+  const interval = Math.max(1, Math.round((firstMeeting ? config.interval : record.stability) * pace));
+  record.nextReview = addDays(today, interval);
+  record.stage = stabilityStage(record.stability);
+
+  const responseMs = Date.now() - wordStartedAt;
+  addHistory(record, {
+    date: today,
+    kind: "learn",
+    rating,
+    responseMs,
+    usedChinese: chineseUsedThisWord,
+    stability: Number(record.stability.toFixed(2)),
+    nextReview: record.nextReview,
+  });
+
+  state.memoryProfile.learningRatings[rating] += 1;
+  state.memoryProfile.totalResponseMs += responseMs;
+  if (chineseUsedThisWord) state.memoryProfile.chineseReveals += 1;
+
+  if (rating === "again" && record.sameDayRepeatDate !== today) {
+    record.sameDayRepeatDate = today;
+    session.push(word);
+    showToast(`${word.word} will appear once more near the end`);
+  }
+
   state.records[word.id] = record;
   updateStreak(today);
   saveState();
@@ -349,28 +400,50 @@ function advanceSession() {
 function answerWord(answer) {
   const word = session[sessionIndex];
   const today = dateKey();
-  const record = state.records[word.id] || { seen: false, stage: 0, failures: 0, attempts: 0, correct: 0, inMistake: false };
+  const record = normalizeRecord(state.records[word.id]);
+  const elapsedDays = Math.max(.25, daysBetween(record.lastReviewed, today));
+  const retrievability = Math.pow(.9, elapsedDays / Math.max(.35, record.stability));
+  const pace = memoryPaceFactor();
+  const responseMs = Date.now() - wordStartedAt;
   record.seen = true;
   record.attempts += 1;
   record.lastReviewed = today;
   state.stats.answers += 1;
+  state.memoryProfile.reviewEvents += 1;
+  state.memoryProfile.totalResponseMs += responseMs;
 
   if (answer === "forgot") {
     record.failures += 1;
-    record.stage = 0;
+    record.difficulty = clamp(record.difficulty + .9, 1, 10);
+    record.stability = Math.max(.35, record.stability * .45);
     record.nextReview = addDays(today, 1);
     if (record.failures >= 3) record.inMistake = true;
   } else if (answer === "hard") {
-    record.stage = Math.max(0, record.stage - 1);
+    record.difficulty = clamp(record.difficulty + .25, 1, 10);
+    record.stability = Math.max(.5, record.stability * 1.08);
     record.nextReview = addDays(today, 1);
   } else {
-    const interval = REVIEW_INTERVALS[Math.min(record.stage, REVIEW_INTERVALS.length - 1)];
-    record.stage = Math.min(record.stage + 1, REVIEW_INTERVALS.length - 1);
-    record.nextReview = addDays(today, interval);
+    const growth = (1.45 + (1 - retrievability) * 1.8 + (10 - record.difficulty) * .035) * pace;
+    record.difficulty = clamp(record.difficulty - .2, 1, 10);
+    record.stability = clamp(record.stability * growth, 1, 3650);
+    record.nextReview = addDays(today, Math.max(1, Math.round(record.stability)));
     record.correct += 1;
     state.stats.correct += 1;
-    if (record.inMistake && record.stage >= 3) record.inMistake = false;
+    state.memoryProfile.successfulReviews += 1;
   }
+
+  record.stage = stabilityStage(record.stability);
+  if (record.inMistake && record.stage >= 3) record.inMistake = false;
+  addHistory(record, {
+    date: today,
+    kind: "review",
+    rating: answer,
+    elapsedDays,
+    responseMs,
+    retrievability: Number(retrievability.toFixed(3)),
+    stability: Number(record.stability.toFixed(2)),
+    nextReview: record.nextReview,
+  });
 
   state.records[word.id] = record;
   updateStreak(today);
@@ -393,7 +466,7 @@ function finishSession() {
   renderReview();
   renderMistakes();
   renderProgress();
-  showToast(sessionMode === "assessment" ? "Review complete — your memory curve is updated" : "Learning complete — your sentence and review plan are saved");
+  showToast(sessionMode === "assessment" ? "Review complete — your memory curve is updated" : "Learning complete — your next reviews are scheduled");
 }
 
 function closeStudy() {
@@ -410,11 +483,8 @@ function setAudioStatus(message) {
 async function playPronunciation(accent, button) {
   const word = session[sessionIndex];
   if (!word) return;
-  if (sessionMode !== "assessment" && !$("#learn-understand").hidden) {
-    learningHeard = true;
-    $("#start-learning-recall").disabled = false;
-    $("#start-learning-recall").innerHTML = "Close the answer and recall it <span>→</span>";
-  }
+  state.memoryProfile.accentPlays[accent] += 1;
+  saveState();
   stopAudio();
   $$("[data-accent]").forEach((item) => item.classList.toggle("playing", item.dataset.accent === accent));
   setAudioStatus(`Playing ${accent === "gb" ? "British" : accent === "us" ? "American" : "Australian"} English…`);
@@ -480,6 +550,7 @@ async function revealChinese() {
   const word = session[sessionIndex];
   const result = $("#chinese-result");
   const button = $("#reveal-chinese");
+  chineseUsedThisWord = true;
   button.disabled = true;
   result.hidden = false;
   result.textContent = "Looking it up only because you asked…";
@@ -650,16 +721,7 @@ function bindEvents() {
   });
   $("#start-review").addEventListener("click", () => startSession(getDueWords(), "assessment"));
   $(".study-close").addEventListener("click", closeStudy);
-  $("#start-learning-recall").addEventListener("click", openLearningRecall);
-  $("#confirm-learning-recall").addEventListener("click", openLearningUse);
-  $("#personal-sentence").addEventListener("input", validatePersonalSentence);
-  $("#repeat-learning").addEventListener("click", () => {
-    learningHeard = false;
-    $("#start-learning-recall").disabled = true;
-    $("#start-learning-recall").innerHTML = "Hear one accent to continue <span>→</span>";
-    showLearningPhase("understand");
-  });
-  $("#finish-learning").addEventListener("click", completeLearningWord);
+  $$("[data-learning-rating]").forEach((button) => button.addEventListener("click", () => rateLearningWord(button.dataset.learningRating)));
   $("#confirm-repeat").addEventListener("click", () => {
     $("#confirm-repeat").hidden = true;
     $("#meaning-question").hidden = false;
