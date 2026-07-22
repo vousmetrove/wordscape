@@ -82,7 +82,7 @@
                 <div class="plan-card-head">
                   <div>
                     <span class="card-kicker">YOUR DAILY MIX</span>
-                    <h2><span id="plan-total">20</span> words, one clear session.</h2>
+                    <h2><span id="plan-total">20</span> words across two clear spaces.</h2>
                   </div>
                   <button class="mini-settings" type="button" data-open-settings>Adjust goal</button>
                 </div>
@@ -111,7 +111,7 @@
                   <g><circle cx="90" cy="104" r="4"/><circle cx="162" cy="96" r="4"/><circle cx="233" cy="91" r="4"/></g>
                 </svg>
                 <div class="curve-labels"><span>Learn</span><span>1d</span><span>3d</span><span>7d</span><span>15d</span></div>
-                <p>Review words take the first seats inside your daily goal. New words fill what remains.</p>
+                <p>Audio reviews reserve the first seats inside your daily goal. New learning stays in its own space.</p>
               </aside>
             </section>
 
@@ -125,9 +125,9 @@
           </section>
 
           <section class="view" id="view-review" data-view-panel="review">
-            <div class="page-heading"><p class="eyebrow">SPACED REVIEW</p><h1>Right before<br /><em>it fades.</em></h1><p>Your review queue follows six recall steps: 1, 2, 4, 7, 15, and 30 days.</p></div>
+            <div class="page-heading"><p class="eyebrow">AUDIO RECALL</p><h1>Listen. Repeat.<br /><em>Know the meaning.</em></h1><p>Review is separate from learning: hear British, American, or Australian English, repeat aloud, then say whether the meaning is present.</p></div>
             <div class="empty-state" id="review-empty"><span>⌁</span><h2>Your mind is clear.</h2><p>No words are due right now. New review cards appear automatically.</p><button type="button" data-go-view="today">Learn new words</button></div>
-            <div class="word-table-wrap" id="review-list-wrap" hidden><div class="list-head"><span>Word</span><span>Next step</span><span>Recall</span></div><div id="review-list"></div><button class="primary-button" id="start-review" type="button">Review due words</button></div>
+            <div class="word-table-wrap" id="review-list-wrap" hidden><div class="list-head"><span>Audio card</span><span>Memory step</span><span>History</span></div><div id="review-list"></div><button class="primary-button" id="start-review" type="button">Start audio recall</button></div>
           </section>
 
           <section class="view" id="view-mistakes" data-view-panel="mistakes">
@@ -168,57 +168,31 @@
       </header>
       <main class="study-stage">
         <div class="study-card" id="study-card">
-          <div class="word-meta"><span id="study-bank">CET-4</span><span id="study-status">NEW</span></div>
-
-          <section class="recall-phase" id="recall-phase">
+          <section class="learning-card" id="learning-card">
+            <div class="word-meta"><span id="study-bank">CET-4</span><span id="study-status">NEW</span></div>
             <div class="visual-media" id="visual-media">
               <img id="study-image" alt="" hidden />
               <video id="study-video" muted loop playsinline hidden></video>
-              <span class="scene-emoji" id="scene-emoji">🧽</span>
-              <span class="visual-label">LOOK · LISTEN · RECALL</span>
+              <span class="scene-emoji" id="scene-emoji">🌱</span>
+              <span class="visual-label">SEE · HEAR · UNDERSTAND</span>
             </div>
 
-            <div class="recall-prompt">
-              <small>01 · BUILD THE WORD FROM THE SCENE</small>
-              <h1>What English word do you see?</h1>
-              <p id="letter-hint">6 letters</p>
+            <div class="word-title-row learning-word-title">
+              <div><small>THE WORD INSIDE THE SCENE</small><h1 id="study-word">absorb</h1><p><span id="study-phonetic">/əbˈzɔːb/</span> · <span id="study-pos">verb</span></p></div>
             </div>
-
-            <form class="recall-form" id="recall-form">
-              <input id="recall-input" type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Type the English word" placeholder="Type the word…" />
-              <button type="submit">Check <span>→</span></button>
-            </form>
-            <p class="recall-feedback" id="recall-feedback" aria-live="polite"></p>
 
             <div class="accent-player" aria-label="Pronunciation accents">
-              <span>HEAR THE WORD</span>
+              <span>HEAR THE SAME WORD THREE WAYS</span>
               <div>
                 <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
                 <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
                 <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
               </div>
-              <p id="audio-status" aria-live="polite">Choose an accent to hear a real recording.</p>
-            </div>
-
-            <button class="cant-recall" id="cant-recall" type="button">I cannot recall it — show me</button>
-          </section>
-
-          <section class="meaning-phase" id="meaning-phase" hidden>
-            <div class="word-title-row">
-              <div><small>02 · UNDERSTAND IN SIMPLE ENGLISH</small><h1 id="study-word">absorb</h1><p><span id="study-phonetic">/əbˈzɔːb/</span> · <span id="study-pos">verb</span></p></div>
-            </div>
-
-            <div class="compact-accent-player accent-player">
-              <span>PRONUNCIATION</span>
-              <div>
-                <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
-                <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
-                <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
-              </div>
+              <p data-audio-status aria-live="polite">Choose an accent to hear a real recording.</p>
             </div>
 
             <div class="meaning-block">
-              <small>PLAIN ENGLISH</small>
+              <small>SIMPLE ENGLISH</small>
               <p id="study-definition">to take in a liquid, idea, or feeling</p>
             </div>
 
@@ -228,21 +202,51 @@
             </blockquote>
 
             <div class="chinese-reveal">
-              <button id="reveal-chinese" type="button"><span>中</span> 03 · Show Chinese only if I need it</button>
+              <button id="reveal-chinese" type="button"><span>中</span> Show Chinese only if I need it</button>
               <p id="chinese-result" hidden></p>
             </div>
 
-            <button class="next-word-button" id="next-word" type="button">Keep this meaning <span>→</span></button>
+            <button class="next-word-button" id="next-word" type="button">I have met this word <span>→</span></button>
+          </section>
+
+          <section class="assessment-card" id="assessment-card" hidden>
+            <div class="word-meta"><span id="assessment-bank">CET-4</span><span id="assessment-status">DUE REVIEW</span></div>
+            <div class="assessment-orb" aria-hidden="true"><span></span><i></i><b></b></div>
+            <div class="assessment-prompt">
+              <small>LISTEN · SPEAK · KNOW</small>
+              <h1>Listen, then repeat it aloud.</h1>
+              <p>The spelling and meaning stay hidden. Try one accent or compare all three.</p>
+            </div>
+
+            <div class="accent-player assessment-player" aria-label="Pronunciation accents">
+              <span>CHOOSE AN ACCENT</span>
+              <div>
+                <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
+                <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
+                <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
+              </div>
+              <p data-audio-status aria-live="polite">Play an accent, then repeat the word aloud.</p>
+            </div>
+
+            <button class="repeat-confirm" id="confirm-repeat" type="button">I repeated it aloud <span>→</span></button>
+
+            <div class="meaning-question" id="meaning-question" hidden>
+              <span>ONE LAST CHECK</span>
+              <h2>Do you know what it means?</h2>
+              <p>Answer from the scene in your mind. You do not need to translate it.</p>
+              <div>
+                <button type="button" data-assessment-answer="forgot">No, not yet</button>
+                <button type="button" data-assessment-answer="got">Yes, I know it</button>
+              </div>
+            </div>
           </section>
         </div>
 
-        <aside class="study-method">
-          <p class="eyebrow">THE THREE-LAYER METHOD</p>
-          <ol>
-            <li class="active" data-method-step="1"><span>01</span><div><strong>See, then recall</strong><small>A picture or video comes before any explanation.</small></div></li>
-            <li data-method-step="2"><span>02</span><div><strong>Understand simply</strong><small>One plain-English meaning. No repeated scene text.</small></div></li>
-            <li data-method-step="3"><span>03</span><div><strong>Chinese is optional</strong><small>Reveal it only when English is not enough.</small></div></li>
-          </ol>
+        <aside class="study-method" id="study-guide">
+          <p class="eyebrow" id="guide-kicker">LEARNING, NOT TESTING</p>
+          <h2 id="guide-title">Keep everything together.</h2>
+          <p id="guide-copy">See the image or video, hear the word, and understand its simple English meaning on one calm screen.</p>
+          <div class="guide-note"><span>中</span><p><strong>Chinese stays optional.</strong><small>Open it only when the English scene is not enough.</small></p></div>
         </aside>
       </main>
     </section>

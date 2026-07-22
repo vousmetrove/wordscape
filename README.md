@@ -10,9 +10,9 @@ Chinese stays hidden unless the learner explicitly asks for it.
 
 ## What works now
 
-- Daily target window from 5–60 words
+- Flexible daily target with any positive number and quick presets up to 200
 - CET-4, CET-6, and IELTS categories
-- Reviews automatically take the first places inside the daily target
+- Reviews automatically reserve the first places inside the daily target while staying in a separate assessment space
 - Ebbinghaus-style intervals at 1, 2, 4, 7, 15, 30, and 60 days
 - Three failed recalls automatically move a word into the mistake book
 - Words leave the mistake book after reaching memory stage 3 again
@@ -63,11 +63,17 @@ Use `data/import-template.json` as the schema. Required fields are:
 
 Recommended fields are `bank`, `phonetic`, `pos`, `topic`, `image` or `video`, `scene`, `emoji`, `example`, `source`, `sourceUrl`, and `chinese`. The study card displays a supplied image or looping video first, with the emoji illustration used only as a fallback.
 
-## Learning card order
+## Learning and assessment
 
-1. **Visual recall:** an image, video, or illustration is shown with an English input box. No definition is visible.
-2. **Plain English:** after recall, one short English definition and one context sentence appear.
-3. **Optional Chinese:** a translation is fetched only after the learner explicitly asks for it.
+The learning card is not a test. It keeps the image or video, written word, three regional pronunciations, one short English definition, one context sentence, and optional Chinese on the same screen.
+
+Assessment lives in the separate Review view:
+
+1. play British, American, or Australian audio while spelling and meaning stay hidden;
+2. repeat the word aloud;
+3. answer only whether its meaning is present in your mind.
+
+A “not yet” answer resets the memory stage and adds one failed recall. After three failed recalls, the word enters the mistake book automatically.
 
 ## Regenerate local pronunciation files
 

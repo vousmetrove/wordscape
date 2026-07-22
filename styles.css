@@ -19,6 +19,8 @@
   --shadow: 0 22px 70px rgba(54, 57, 44, 0.10);
 }
 
+[hidden] { display: none !important; }
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: hidden; background: var(--paper); color: var(--ink); font-family: var(--sans); }
@@ -187,6 +189,13 @@ h1 em, h2 em { color: #72833e; font-weight: inherit; }
 
 .study-stage { width: min(1100px, calc(100% - 40px)); min-height: calc(100vh - 72px); margin: auto; padding: 35px 0 45px; display: grid; grid-template-columns: minmax(480px, 690px) 260px; gap: 35px; align-items: center; justify-content: center; }
 .study-card { padding: 31px; border: 1px solid var(--line); border-radius: 22px; background: var(--white); box-shadow: var(--shadow); }
+.learning-card > .visual-media { min-height: 210px; margin-top: 13px; }
+.learning-word-title { margin: 18px 2px 13px; }
+.learning-word-title small { color: var(--lime-deep); font-family: var(--mono); font-size: 8px; letter-spacing: .14em; }
+.learning-word-title h1 { font-size: clamp(50px, 5.3vw, 70px); }
+.learning-card .accent-player { margin-top: 0; }
+.learning-card .meaning-block { padding: 19px 4px 16px; }
+.learning-card .example-block { padding: 15px 18px; }
 .word-meta { display: flex; gap: 7px; }
 .word-meta span { padding: 5px 7px; border-radius: 5px; background: var(--paper-2); color: var(--muted); font-family: var(--mono); font-size: 7px; letter-spacing: .1em; }
 .word-meta span:last-child { color: #657638; background: #e8f1c8; }
@@ -253,6 +262,13 @@ h1 em, h2 em { color: #72833e; font-weight: inherit; }
 
 .study-method { align-self: center; }
 .study-method .eyebrow { margin-bottom: 17px; }
+.study-method > h2 { margin: 0 0 12px; font-family: var(--serif); font-size: 30px; font-weight: 400; line-height: 1.05; }
+.study-method > p:not(.eyebrow) { margin: 0; color: var(--muted); font-family: var(--serif); font-size: 14px; line-height: 1.55; }
+.guide-note { margin-top: 23px; padding: 15px; display: grid; grid-template-columns: 32px 1fr; gap: 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.56); }
+.guide-note > span { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 50%; background: var(--paper-2); font-family: var(--serif); font-size: 13px; }
+.guide-note p { margin: 0; display: grid; gap: 4px; }
+.guide-note strong { font-family: var(--serif); font-size: 14px; font-weight: 400; }
+.guide-note small { color: var(--muted); font-size: 8px; line-height: 1.45; }
 .study-method ol { margin: 0; padding: 0; display: grid; gap: 8px; list-style: none; }
 .study-method li { padding: 14px; display: grid; grid-template-columns: 28px 1fr; gap: 10px; border: 1px solid transparent; border-radius: 11px; opacity: .42; transition: .25s; }
 .study-method li.active { border-color: var(--line); background: var(--white); box-shadow: 0 10px 30px rgba(50,53,42,.06); opacity: 1; }
@@ -261,6 +277,29 @@ h1 em, h2 em { color: #72833e; font-weight: inherit; }
 .study-method li div { display: grid; gap: 3px; }
 .study-method strong { font-family: var(--serif); font-size: 15px; font-weight: 400; }
 .study-method small { color: var(--muted); font-size: 8px; line-height: 1.45; }
+
+.assessment-card { min-height: 610px; display: flex; flex-direction: column; }
+.assessment-orb { position: relative; width: 144px; height: 144px; margin: 42px auto 22px; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle at 38% 35%, #f8ffe1, #d7e3a9 58%, #b8ca76); box-shadow: 0 25px 55px rgba(80,95,45,.18); }
+.assessment-orb::before, .assessment-orb::after, .assessment-orb span, .assessment-orb i, .assessment-orb b { content: ""; display: block; width: 4px; border-radius: 5px; background: var(--ink); opacity: .72; animation: sound-wave 1.15s ease-in-out infinite; }
+.assessment-orb::before { height: 24px; }
+.assessment-orb::after { position: absolute; left: 48px; height: 43px; animation-delay: -.35s; }
+.assessment-orb span { position: absolute; right: 48px; height: 43px; animation-delay: -.7s; }
+.assessment-orb i { position: absolute; left: 61px; height: 70px; animation-delay: -.55s; }
+.assessment-orb b { position: absolute; right: 61px; height: 70px; animation-delay: -.2s; }
+@keyframes sound-wave { 50% { transform: scaleY(.42); opacity: .42; } }
+.assessment-prompt { text-align: center; }
+.assessment-prompt small, .meaning-question > span { color: var(--lime-deep); font-family: var(--mono); font-size: 8px; letter-spacing: .15em; }
+.assessment-prompt h1 { margin: 8px 0 7px; font-family: var(--serif); font-size: 35px; font-weight: 400; }
+.assessment-prompt p { max-width: 440px; margin: auto; color: var(--muted); font-family: var(--serif); font-size: 13px; line-height: 1.5; }
+.assessment-player { margin-top: 24px; }
+.repeat-confirm { width: 100%; min-height: 47px; margin-top: 15px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; border: 0; border-radius: 10px; color: var(--paper); background: var(--ink); font-size: 10px; font-weight: 600; cursor: pointer; }
+.meaning-question { margin-top: 16px; padding: 21px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); text-align: center; }
+.meaning-question h2 { margin: 7px 0 5px; font-family: var(--serif); font-size: 28px; font-weight: 400; }
+.meaning-question p { margin: 0 auto 16px; color: var(--muted); font-family: var(--serif); font-size: 12px; }
+.meaning-question > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.meaning-question button { min-height: 45px; border: 1px solid var(--line); border-radius: 9px; background: var(--white); color: var(--ink); font-family: var(--serif); font-size: 14px; cursor: pointer; }
+.meaning-question button:last-child { border-color: var(--lime-deep); background: #eef5d5; }
+.meaning-question button:hover { transform: translateY(-1px); }
 
 .answer-actions > p { margin: 0 0 15px; color: var(--muted); font-family: var(--serif); font-size: 14px; line-height: 1.5; }
 .answer-actions > div { display: grid; gap: 8px; }
@@ -376,11 +415,16 @@ menu { margin: 25px 0 0; padding: 17px 0 0; display: flex; justify-content: flex
   .accent-player button b { grid-row: auto; margin: auto; }
   .accent-player button::after { display: none; }
   .study-method { margin: 17px 5px 0; }
+  .study-method > h2 { font-size: 24px; }
+  .guide-note { margin-top: 14px; }
   .study-method ol { grid-template-columns: repeat(3,1fr); }
   .study-method li { display: block; padding: 9px; }
   .study-method li > span { margin-bottom: 6px; }
   .study-method li small { display: none; }
   .meaning-block p { font-size: 21px; }
+  .assessment-card { min-height: 560px; }
+  .assessment-orb { width: 116px; height: 116px; margin: 28px auto 18px; }
+  .assessment-prompt h1 { font-size: 29px; }
   .answer-actions { margin-top: 14px; }
   .answer-actions > div { grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
   .answer-button { display: flex; flex-direction: column; justify-content: center; padding: 8px 4px; text-align: center; }

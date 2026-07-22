@@ -13,11 +13,9 @@ let state = loadState();
 let words = [...window.WORD_DATA, ...state.customWords];
 let session = [];
 let sessionIndex = 0;
-let sessionMode = "today";
+let sessionMode = "learn";
 let toastTimer;
 let searchTimer;
-let recallAttempts = 0;
-let pendingAnswer = "got";
 let activeAudio = null;
 
 const $ = (selector, parent = document) => parent.querySelector(selector);
@@ -117,14 +115,20 @@ function renderDashboard() {
   } else if (!reviewCount) {
     $("#mix-explanation").textContent = "No review is due yet, so today is all new words.";
   } else if (plan.overflow) {
-    $("#mix-explanation").textContent = `${reviewCount} reviews fill today's goal. ${plan.overflow} more wait in the queue.`;
+    $("#mix-explanation").textContent = `${reviewCount} audio reviews fill today's goal. ${plan.overflow} more wait in the separate review queue.`;
   } else {
-    $("#mix-explanation").textContent = `${reviewCount} reviews come first; ${newCount} new words complete the goal.`;
+    $("#mix-explanation").textContent = `${reviewCount} audio reviews reserve part of the goal; ${newCount} new words stay in the learning space.`;
   }
 
   $("#selected-banks").innerHTML = state.settings.banks.map((bank) => `<span class="bank-pill">${bank.replace("CET", "CET-")}</span>`).join("");
   $("#start-session").disabled = !total;
-  $("#start-session").innerHTML = total ? `Begin today’s session <span>→</span>` : `Today is complete <span>✓</span>`;
+  if (newCount) {
+    $("#start-session").innerHTML = `Learn ${newCount} new ${newCount === 1 ? "word" : "words"} <span>→</span>`;
+  } else if (reviewCount) {
+    $("#start-session").innerHTML = `Go to ${reviewCount} due ${reviewCount === 1 ? "review" : "reviews"} <span>→</span>`;
+  } else {
+    $("#start-session").innerHTML = `Today is complete <span>✓</span>`;
+  }
 }
 
 function bankCard(bank, preview = false) {
@@ -149,9 +153,9 @@ function renderReview() {
   const due = getDueWords();
   $("#review-empty").hidden = due.length > 0;
   $("#review-list-wrap").hidden = due.length === 0;
-  $("#review-list").innerHTML = due.map((word) => {
+  $("#review-list").innerHTML = due.map((word, index) => {
     const record = getRecord(word.id);
-    return `<div class="word-list-row"><strong>${word.word}</strong><span>Stage ${record.stage + 1}</span><small>${record.failures ? `${record.failures} missed` : "on track"}</small></div>`;
+    return `<div class="word-list-row"><strong>Audio card ${index + 1}</strong><span>Stage ${record.stage + 1}</span><small>${record.failures ? `${record.failures} missed` : "on track"}</small></div>`;
   }).join("");
 }
 
@@ -193,7 +197,7 @@ function showView(name) {
   if (name === "progress") renderProgress();
 }
 
-function startSession(queue, mode = "today") {
+function startSession(queue, mode = "learn") {
   if (!queue.length) {
     showToast("Nothing is waiting right now");
     return;
@@ -201,7 +205,7 @@ function startSession(queue, mode = "today") {
   session = queue;
   sessionIndex = 0;
   sessionMode = mode;
-  $("#study-mode-label").textContent = mode === "review" ? "REVIEW QUEUE" : mode === "mistake" ? "MISTAKE BOOK" : "TODAY’S MIX";
+  $("#study-mode-label").textContent = mode === "assessment" ? "AUDIO RECALL" : mode === "mistake" ? "MISTAKE BOOK" : "TODAY’S LEARNING";
   $("#study-total").textContent = session.length;
   $("#study-overlay").classList.add("open");
   $("#study-overlay").setAttribute("aria-hidden", "false");
@@ -212,10 +216,13 @@ function startSession(queue, mode = "today") {
 function renderStudyWord() {
   const word = session[sessionIndex];
   const record = getRecord(word.id);
+  const isAssessment = sessionMode === "assessment";
   $("#study-index").textContent = sessionIndex + 1;
   $("#study-progress-fill").style.width = `${(sessionIndex / session.length) * 100}%`;
   $("#study-bank").textContent = word.bank.replace("CET", "CET-");
-  $("#study-status").textContent = record?.seen ? `REVIEW · STAGE ${record.stage + 1}` : "NEW";
+  $("#study-status").textContent = record?.seen ? "MET BEFORE" : "NEW";
+  $("#assessment-bank").textContent = word.bank.replace("CET", "CET-");
+  $("#assessment-status").textContent = record ? `DUE · STAGE ${record.stage + 1}` : "DUE REVIEW";
   $("#study-word").textContent = word.word;
   $("#study-phonetic").textContent = word.phonetic || "pronunciation available online";
   $("#study-pos").textContent = word.pos || "word";
@@ -228,18 +235,25 @@ function renderStudyWord() {
   $("#chinese-result").hidden = true;
   $("#chinese-result").textContent = "";
   $("#reveal-chinese").disabled = false;
-  $("#letter-hint").textContent = `${word.word.length} letters`;
-  $("#recall-input").value = "";
-  $("#recall-input").classList.remove("wrong");
-  $("#recall-feedback").textContent = "";
-  $("#cant-recall").textContent = "I cannot recall it — show me";
-  recallAttempts = 0;
-  pendingAnswer = "got";
   stopAudio();
-  renderStudyMedia(word);
-  showRecallPhase();
+  $("#learning-card").hidden = isAssessment;
+  $("#assessment-card").hidden = !isAssessment;
+  $("#meaning-question").hidden = true;
+  $("#confirm-repeat").hidden = false;
+  $(".guide-note").hidden = isAssessment;
+  setAudioStatus(isAssessment ? "Play an accent, then repeat the word aloud." : "Choose an accent to hear a real recording.");
+
+  if (isAssessment) {
+    $("#guide-kicker").textContent = "A SEPARATE RECALL SPACE";
+    $("#guide-title").textContent = "Your voice does the work.";
+    $("#guide-copy").textContent = "Listen without seeing the spelling, repeat the sound aloud, then decide whether the meaning is present in your mind.";
+  } else {
+    renderStudyMedia(word);
+    $("#guide-kicker").textContent = "LEARNING, NOT TESTING";
+    $("#guide-title").textContent = "Keep everything together.";
+    $("#guide-copy").textContent = "See the image or video, hear the word, and understand its simple English meaning on one calm screen.";
+  }
   $("#study-card").animate([{ opacity: .55, transform: "translateY(5px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 240 });
-  setTimeout(() => $("#recall-input").focus(), 120);
 }
 
 function renderStudyMedia(word) {
@@ -266,42 +280,23 @@ function renderStudyMedia(word) {
   }
 }
 
-function showRecallPhase() {
-  $("#recall-phase").hidden = false;
-  $("#meaning-phase").hidden = true;
-  $$("[data-method-step]").forEach((step) => step.classList.toggle("active", step.dataset.methodStep === "1"));
-}
-
-function revealMeaning(answer) {
-  pendingAnswer = answer;
-  $("#recall-phase").hidden = true;
-  $("#meaning-phase").hidden = false;
-  $$("[data-method-step]").forEach((step) => step.classList.toggle("active", step.dataset.methodStep === "2"));
-  $("#meaning-phase").animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 260 });
-}
-
-function checkRecall(event) {
-  event.preventDefault();
+function completeLearningWord() {
   const word = session[sessionIndex];
-  const input = $("#recall-input");
-  const answer = input.value.trim().toLowerCase();
-  if (!answer) return;
+  const today = dateKey();
+  const record = state.records[word.id] || { seen: false, stage: 0, failures: 0, attempts: 0, correct: 0, inMistake: false };
+  record.seen = true;
+  record.lastReviewed = today;
+  if (!record.nextReview) record.nextReview = addDays(today, 1);
+  state.records[word.id] = record;
+  updateStreak(today);
+  saveState();
+  advanceSession();
+}
 
-  if (answer === word.word.toLowerCase()) {
-    $("#recall-feedback").textContent = recallAttempts ? "Yes — you rebuilt it." : "Exactly. The scene led you to the word.";
-    $("#recall-feedback").className = "recall-feedback correct";
-    pendingAnswer = recallAttempts ? "hard" : "got";
-    setTimeout(() => revealMeaning(pendingAnswer), 420);
-    return;
-  }
-
-  recallAttempts += 1;
-  input.classList.add("wrong");
-  $("#recall-feedback").textContent = recallAttempts >= 3 ? "Three tries. Reveal it now, then rebuild the scene." : "Not that word yet. Look once more at the scene.";
-  $("#recall-feedback").className = "recall-feedback wrong";
-  if (recallAttempts >= 3) $("#cant-recall").textContent = "Reveal the word and add one failed recall";
-  setTimeout(() => input.classList.remove("wrong"), 320);
-  input.select();
+function advanceSession() {
+  sessionIndex += 1;
+  if (sessionIndex >= session.length) finishSession();
+  else renderStudyWord();
 }
 
 function answerWord(answer) {
@@ -335,9 +330,7 @@ function answerWord(answer) {
   saveState();
 
   if (answer === "forgot" && record.failures === 3) showToast(`${word.word} moved to your mistake book`);
-  sessionIndex += 1;
-  if (sessionIndex >= session.length) finishSession();
-  else renderStudyWord();
+  advanceSession();
 }
 
 function updateStreak(today) {
@@ -353,7 +346,7 @@ function finishSession() {
   renderReview();
   renderMistakes();
   renderProgress();
-  showToast("Session complete — the next review is scheduled");
+  showToast(sessionMode === "assessment" ? "Review complete — your memory curve is updated" : "Learning complete — first reviews are scheduled for tomorrow");
 }
 
 function closeStudy() {
@@ -363,12 +356,16 @@ function closeStudy() {
   document.body.style.overflow = "";
 }
 
+function setAudioStatus(message) {
+  $$("[data-audio-status]").forEach((status) => { status.textContent = message; });
+}
+
 async function playPronunciation(accent, button) {
   const word = session[sessionIndex];
   if (!word) return;
   stopAudio();
   $$("[data-accent]").forEach((item) => item.classList.toggle("playing", item.dataset.accent === accent));
-  $("#audio-status").textContent = `Playing ${accent === "gb" ? "British" : accent === "us" ? "American" : "Australian"} English…`;
+  setAudioStatus(`Playing ${accent === "gb" ? "British" : accent === "us" ? "American" : "Australian"} English…`);
 
   const localUrl = `./audio/${encodeURIComponent(word.word.toLowerCase())}/${accent}.mp3`;
   try {
@@ -379,9 +376,9 @@ async function playPronunciation(accent, button) {
     } catch {
       try {
         playBrowserVoice(word.word, accent);
-        $("#audio-status").textContent = "Using this device’s matching accent voice.";
+        setAudioStatus("Using this device’s matching accent voice.");
       } catch {
-        $("#audio-status").textContent = "No audio is available for this imported word yet.";
+        setAudioStatus("No audio is available for this imported word yet.");
         showToast("Generate or connect pronunciation audio for this imported word");
       }
     }
@@ -400,7 +397,7 @@ function playAudioUrl(url) {
     audio.addEventListener("error", reject, { once: true });
     audio.addEventListener("ended", () => {
       $$("[data-accent]").forEach((item) => item.classList.remove("playing"));
-      $("#audio-status").textContent = "Choose an accent to hear it again.";
+      setAudioStatus("Choose an accent to hear it again.");
       activeAudio = null;
     }, { once: true });
     audio.load();
@@ -435,7 +432,6 @@ async function revealChinese() {
   result.hidden = false;
   result.textContent = "Looking it up only because you asked…";
   const provider = state.settings.provider;
-  $$("[data-method-step]").forEach((step) => step.classList.toggle("active", step.dataset.methodStep === "3"));
 
   if (provider === "local") {
     result.textContent = word.chinese || "No local Chinese hint is stored for this word.";
@@ -597,12 +593,20 @@ function bindEvents() {
   $$('[data-open-settings]').forEach((button) => button.addEventListener("click", openSettings));
   $$("[data-goal]").forEach((button) => button.addEventListener("click", () => { $("#daily-goal").value = button.dataset.goal; }));
   $("#save-settings").addEventListener("click", saveSettings);
-  $("#start-session").addEventListener("click", () => startSession(getPlan().queue));
-  $("#start-review").addEventListener("click", () => startSession(getDueWords(), "review"));
+  $("#start-session").addEventListener("click", () => {
+    const plan = getPlan();
+    if (plan.fresh.length) startSession(plan.fresh, "learn");
+    else if (plan.due.length) showView("review");
+  });
+  $("#start-review").addEventListener("click", () => startSession(getDueWords(), "assessment"));
   $(".study-close").addEventListener("click", closeStudy);
-  $("#recall-form").addEventListener("submit", checkRecall);
-  $("#cant-recall").addEventListener("click", () => revealMeaning("forgot"));
-  $("#next-word").addEventListener("click", () => answerWord(pendingAnswer));
+  $("#next-word").addEventListener("click", completeLearningWord);
+  $("#confirm-repeat").addEventListener("click", () => {
+    $("#confirm-repeat").hidden = true;
+    $("#meaning-question").hidden = false;
+    $("#meaning-question").animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 240 });
+  });
+  $$("[data-assessment-answer]").forEach((button) => button.addEventListener("click", () => answerWord(button.dataset.assessmentAnswer)));
   $$("[data-accent]").forEach((button) => button.addEventListener("click", () => playPronunciation(button.dataset.accent, button)));
   $("#reveal-chinese").addEventListener("click", revealChinese);
   $("#open-search").addEventListener("click", openSearch);
