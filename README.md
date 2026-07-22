@@ -1,10 +1,10 @@
 # Wordscape — think in English
 
-Wordscape is an English-first vocabulary learning website for Chinese learners. It replaces automatic word-to-Chinese matching with three stronger memory anchors:
+Wordscape is an English-first vocabulary learning website for Chinese learners. It replaces automatic word-to-Chinese matching with three active memory anchors:
 
 1. a very simple English definition;
-2. one concrete scene to picture;
-3. one natural sentence in context.
+2. immediate spoken retrieval;
+3. one short sentence created by the learner.
 
 Chinese stays hidden unless the learner explicitly asks for it.
 
@@ -61,11 +61,15 @@ Use `data/import-template.json` as the schema. Required fields are:
 - `word`
 - `definition` (simple English)
 
-Recommended fields are `bank`, `phonetic`, `pos`, `topic`, `image` or `video`, `scene`, `emoji`, `example`, `source`, `sourceUrl`, and `chinese`. The study card displays a supplied image or looping video first, with the emoji illustration used only as a fallback.
+Recommended fields are `bank`, `phonetic`, `pos`, `topic`, `example`, `source`, `sourceUrl`, and `chinese`. Images, videos, scenes, and emoji cues are deliberately ignored because a weak visual match can teach the wrong meaning.
 
 ## Learning and assessment
 
-The learning card is not a test. It keeps the image or video, written word, three regional pronunciations, one short English definition, one context sentence, and optional Chinese on the same screen.
+The learning card is not a scored test, but it cannot be skipped passively:
+
+1. **Understand:** play at least one regional pronunciation, read one short English definition, and notice the word in context.
+2. **Retrieve:** the spelling and definition close; say the word and explain it aloud from memory.
+3. **Use:** write one short personal English sentence containing the word. The sentence is stored locally with the memory record.
 
 Assessment lives in the separate Review view:
 

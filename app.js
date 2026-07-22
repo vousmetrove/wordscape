@@ -17,6 +17,7 @@ let sessionMode = "learn";
 let toastTimer;
 let searchTimer;
 let activeAudio = null;
+let learningHeard = false;
 
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
@@ -164,7 +165,7 @@ function renderMistakes() {
   $("#mistake-empty").hidden = mistakes.length > 0;
   $("#mistake-grid").innerHTML = mistakes.map((word) => {
     const record = getRecord(word.id);
-    return `<article class="mistake-card"><span>${word.bank.replace("CET", "CET-")} · ${record.failures} FAILED RECALLS</span><h3>${word.word}</h3><p>${word.definition}</p><button type="button" data-practice-word="${word.id}">Rebuild this scene →</button></article>`;
+    return `<article class="mistake-card"><span>${word.bank.replace("CET", "CET-")} · ${record.failures} FAILED RECALLS</span><h3>${word.word}</h3><p>${word.definition}</p><button type="button" data-practice-word="${word.id}">Learn and use it again →</button></article>`;
   }).join("");
 }
 
@@ -226,15 +227,25 @@ function renderStudyWord() {
   $("#study-word").textContent = word.word;
   $("#study-phonetic").textContent = word.phonetic || "pronunciation available online";
   $("#study-pos").textContent = word.pos || "word";
-  $("#scene-emoji").textContent = word.emoji || "💭";
   $("#study-definition").textContent = word.definition;
-  $("#study-example").textContent = word.example || `Use “${word.word}” in a scene you know well.`;
+  $("#study-example").textContent = word.example || `Say a short sentence with “${word.word}” that is true for you.`;
   $("#study-source").textContent = word.source || "Imported word bank";
   $("#study-source-link").hidden = !word.sourceUrl;
   $("#study-source-link").href = word.sourceUrl || "#";
+  $("#recall-bank").textContent = word.bank.replace("CET", "CET-");
+  $("#use-bank").textContent = word.bank.replace("CET", "CET-");
+  $("#use-word").textContent = word.word;
+  $("#use-definition").textContent = word.definition;
   $("#chinese-result").hidden = true;
   $("#chinese-result").textContent = "";
   $("#reveal-chinese").disabled = false;
+  $("#personal-sentence").value = "";
+  $("#sentence-feedback").textContent = "Use the word and at least three other English words.";
+  $("#sentence-feedback").className = "sentence-feedback";
+  $("#finish-learning").disabled = true;
+  $("#start-learning-recall").disabled = true;
+  $("#start-learning-recall").innerHTML = "Hear one accent to continue <span>→</span>";
+  learningHeard = false;
   stopAudio();
   $("#learning-card").hidden = isAssessment;
   $("#assessment-card").hidden = !isAssessment;
@@ -248,35 +259,70 @@ function renderStudyWord() {
     $("#guide-title").textContent = "Your voice does the work.";
     $("#guide-copy").textContent = "Listen without seeing the spelling, repeat the sound aloud, then decide whether the meaning is present in your mind.";
   } else {
-    renderStudyMedia(word);
-    $("#guide-kicker").textContent = "LEARNING, NOT TESTING";
-    $("#guide-title").textContent = "Keep everything together.";
-    $("#guide-copy").textContent = "See the image or video, hear the word, and understand its simple English meaning on one calm screen.";
+    showLearningPhase("understand");
   }
   $("#study-card").animate([{ opacity: .55, transform: "translateY(5px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 240 });
 }
 
-function renderStudyMedia(word) {
-  const image = $("#study-image");
-  const video = $("#study-video");
-  const emoji = $("#scene-emoji");
-  image.hidden = true;
-  video.hidden = true;
-  emoji.hidden = true;
-  video.pause();
-  video.removeAttribute("src");
+function showLearningPhase(phase) {
+  $("#learn-understand").hidden = phase !== "understand";
+  $("#learn-recall").hidden = phase !== "recall";
+  $("#learn-use").hidden = phase !== "use";
+  $(".guide-note").hidden = phase !== "understand";
+  stopAudio();
 
-  if (word.video) {
-    video.src = word.video;
-    video.hidden = false;
-    video.play().catch(() => { video.hidden = true; emoji.hidden = false; });
-  } else if (word.image) {
-    image.src = word.image;
-    image.alt = `A visual clue for a ${word.word.length}-letter English word`;
-    image.hidden = false;
-    image.onerror = () => { image.hidden = true; emoji.hidden = false; };
+  if (phase === "understand") {
+    $("#guide-kicker").textContent = "1 · UNDERSTAND";
+    $("#guide-title").textContent = "Make the meaning clear.";
+    $("#guide-copy").textContent = "Hear one accent, read one simple English meaning, and notice how the word works in a real sentence.";
+    setAudioStatus(learningHeard ? "You can compare another accent or continue." : "Choose an accent before the recall step opens.");
+  } else if (phase === "recall") {
+    $("#guide-kicker").textContent = "2 · RETRIEVE";
+    $("#guide-title").textContent = "Close the answer and rebuild it.";
+    $("#guide-copy").textContent = "Say the word and explain its meaning aloud from memory. This is practice, not a score.";
+    setAudioStatus("Say the word and its easy English meaning aloud.");
   } else {
-    emoji.hidden = false;
+    $("#guide-kicker").textContent = "3 · USE IT";
+    $("#guide-title").textContent = "Give the word a job.";
+    $("#guide-copy").textContent = "A short sentence you create makes the word more useful and gives memory another route back.";
+  }
+}
+
+function openLearningRecall() {
+  if (!learningHeard) return showToast("Hear at least one accent first");
+  showLearningPhase("recall");
+}
+
+function openLearningUse() {
+  showLearningPhase("use");
+  setTimeout(() => $("#personal-sentence").focus(), 80);
+}
+
+function validatePersonalSentence() {
+  const word = session[sessionIndex]?.word || "";
+  const value = $("#personal-sentence").value.trim();
+  const tokens = value.match(/[A-Za-z]+(?:'[A-Za-z]+)?/g) || [];
+  const target = word.toLowerCase();
+  const targetStem = target.slice(0, Math.max(3, target.length - 2));
+  const hasWord = tokens.some((token) => {
+    const normalized = token.toLowerCase();
+    return normalized === target || normalized.startsWith(targetStem);
+  });
+  const valid = tokens.length >= 4 && hasWord;
+  $("#finish-learning").disabled = !valid;
+
+  if (!value) {
+    $("#sentence-feedback").textContent = "Use the word and at least three other English words.";
+    $("#sentence-feedback").className = "sentence-feedback";
+  } else if (!hasWord) {
+    $("#sentence-feedback").textContent = `Include “${word}” or a natural form of it.`;
+    $("#sentence-feedback").className = "sentence-feedback needs-work";
+  } else if (tokens.length < 4) {
+    $("#sentence-feedback").textContent = "Add a few more words to make a complete idea.";
+    $("#sentence-feedback").className = "sentence-feedback needs-work";
+  } else {
+    $("#sentence-feedback").textContent = "Good — this sentence is your personal memory link.";
+    $("#sentence-feedback").className = "sentence-feedback ready";
   }
 }
 
@@ -286,6 +332,7 @@ function completeLearningWord() {
   const record = state.records[word.id] || { seen: false, stage: 0, failures: 0, attempts: 0, correct: 0, inMistake: false };
   record.seen = true;
   record.lastReviewed = today;
+  record.personalSentence = $("#personal-sentence").value.trim();
   if (!record.nextReview) record.nextReview = addDays(today, 1);
   state.records[word.id] = record;
   updateStreak(today);
@@ -346,7 +393,7 @@ function finishSession() {
   renderReview();
   renderMistakes();
   renderProgress();
-  showToast(sessionMode === "assessment" ? "Review complete — your memory curve is updated" : "Learning complete — first reviews are scheduled for tomorrow");
+  showToast(sessionMode === "assessment" ? "Review complete — your memory curve is updated" : "Learning complete — your sentence and review plan are saved");
 }
 
 function closeStudy() {
@@ -363,6 +410,11 @@ function setAudioStatus(message) {
 async function playPronunciation(accent, button) {
   const word = session[sessionIndex];
   if (!word) return;
+  if (sessionMode !== "assessment" && !$("#learn-understand").hidden) {
+    learningHeard = true;
+    $("#start-learning-recall").disabled = false;
+    $("#start-learning-recall").innerHTML = "Close the answer and recall it <span>→</span>";
+  }
   stopAudio();
   $$("[data-accent]").forEach((item) => item.classList.toggle("playing", item.dataset.accent === accent));
   setAudioStatus(`Playing ${accent === "gb" ? "British" : accent === "us" ? "American" : "Australian"} English…`);
@@ -523,7 +575,6 @@ async function lookupRemote(query) {
     const tempWord = {
       id: `live-${normalized}`, word: normalized, phonetic: data[0].phonetic || "", pos: meaning.partOfSpeech,
       bank: "LIVE", topic: "Dictionary", definition: definition.definition,
-      scene: `Create one clear, personal scene where “${normalized}” is happening.`, emoji: "💭",
       example: definition.example || `Say a short sentence with “${normalized}” that is true for you.`, source: "Free Dictionary API · live lookup",
     };
     words = words.filter((word) => word.id !== tempWord.id).concat(tempWord);
@@ -558,9 +609,8 @@ function normalizeImportedWord(item, index) {
   return {
     id: item.id || `import-${bank.toLowerCase()}-${word}-${index}`,
     word, bank, definition, phonetic: item.phonetic || "", pos: item.pos || "word",
-    topic: item.topic || "Imported", scene: item.scene || `Picture a real moment where “${word}” is happening.`,
-    emoji: item.emoji || "💭", example: item.example || `Use “${word}” in a true sentence about your life.`,
-    image: item.image || "", video: item.video || "", source: item.source || "Licensed import", sourceUrl: item.sourceUrl || "", chinese: item.chinese || "",
+    topic: item.topic || "Imported", example: item.example || `Use “${word}” in a true sentence about your life.`,
+    source: item.source || "Licensed import", sourceUrl: item.sourceUrl || "", chinese: item.chinese || "",
   };
 }
 
@@ -600,7 +650,16 @@ function bindEvents() {
   });
   $("#start-review").addEventListener("click", () => startSession(getDueWords(), "assessment"));
   $(".study-close").addEventListener("click", closeStudy);
-  $("#next-word").addEventListener("click", completeLearningWord);
+  $("#start-learning-recall").addEventListener("click", openLearningRecall);
+  $("#confirm-learning-recall").addEventListener("click", openLearningUse);
+  $("#personal-sentence").addEventListener("input", validatePersonalSentence);
+  $("#repeat-learning").addEventListener("click", () => {
+    learningHeard = false;
+    $("#start-learning-recall").disabled = true;
+    $("#start-learning-recall").innerHTML = "Hear one accent to continue <span>→</span>";
+    showLearningPhase("understand");
+  });
+  $("#finish-learning").addEventListener("click", completeLearningWord);
   $("#confirm-repeat").addEventListener("click", () => {
     $("#confirm-repeat").hidden = true;
     $("#meaning-question").hidden = false;

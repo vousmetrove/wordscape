@@ -95,7 +95,7 @@ window.WORD_DATA = [
   {
     id: "cet6-retain", word: "retain", phonetic: "/rɪˈteɪn/", pos: "verb", bank: "CET6", topic: "Memory",
     definition: "to keep something instead of losing it", scene: "A closed jar keeps the last warm light of sunset inside.", emoji: "🏺", chinese: "保留；记住",
-    example: "We retain ideas better when they connect to a clear image.", source: "Practice context · original",
+    example: "We retain ideas better when we recall and use them.", source: "Practice context · original",
   },
   {
     id: "cet6-subtle", word: "subtle", phonetic: "/ˈsʌtəl/", pos: "adjective", bank: "CET6", topic: "Description",
