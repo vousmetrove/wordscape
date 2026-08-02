@@ -1,4 +1,5 @@
 const STORAGE_KEY = "wordscape-listening-dictation-v1";
+const SPEECH_RATES = [1, 1.2, 1.4, 1.6];
 const library = Array.isArray(window.LISTENING_WORD_DATA) ? window.LISTENING_WORD_DATA : [];
 const meta = window.LISTENING_LIBRARY_META || { total: library.length, rawRows: library.length, chapters: [] };
 
@@ -20,13 +21,16 @@ let playToken = 0;
 let isPlaying = false;
 let advanceTimer = null;
 let toastTimer = null;
+let cachedEnglishVoice = null;
 
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const savedRate = Number(saved.speechRate);
     return {
       ...defaultState,
       ...saved,
+      speechRate: SPEECH_RATES.includes(savedRate) ? savedRate : defaultState.speechRate,
       progress: { ...defaultState.progress, ...(saved.progress || {}) },
     };
   } catch {
@@ -257,9 +261,10 @@ function completeCurrentWord() {
 
 function selectVoice(locale = "en-GB") {
   const voices = speechSynthesis.getVoices();
-  return voices.find((voice) => voice.lang.toLocaleLowerCase() === locale.toLocaleLowerCase())
+  cachedEnglishVoice = voices.find((voice) => voice.lang.toLocaleLowerCase() === locale.toLocaleLowerCase())
     || voices.find((voice) => voice.lang.toLocaleLowerCase().startsWith("en"))
     || null;
+  return cachedEnglishVoice;
 }
 
 function speakOnce(word, token) {
@@ -271,16 +276,12 @@ function speakOnce(word, token) {
     const utterance = new SpeechSynthesisUtterance(word);
     utterance.lang = "en-GB";
     utterance.rate = Number(state.speechRate) || 1;
-    const voice = selectVoice("en-GB");
+    const voice = cachedEnglishVoice || selectVoice("en-GB");
     if (voice) utterance.voice = voice;
     utterance.addEventListener("end", resolve, { once: true });
     utterance.addEventListener("error", resolve, { once: true });
     speechSynthesis.speak(utterance);
   });
-}
-
-function pause(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 async function playCurrentWord() {
@@ -294,10 +295,10 @@ async function playCurrentWord() {
     return;
   }
 
-  stopAudio(false);
   const token = ++playToken;
   const repeatCount = Number(state.repeatCount) || 1;
   isPlaying = true;
+  speechSynthesis.resume();
   $("#play-audio").classList.add("playing");
   $("#play-audio strong").textContent = "点击停止播放";
 
@@ -305,7 +306,6 @@ async function playCurrentWord() {
     if (token !== playToken) break;
     $("#audio-status").textContent = `正在播放第 ${index + 1} / ${repeatCount} 遍`;
     await speakOnce(currentEntry.word, token);
-    if (token === playToken && index < repeatCount - 1) await pause(420);
   }
 
   if (token === playToken) stopAudio();
@@ -346,9 +346,18 @@ function bindEvents() {
     stopAudio();
   });
 
-  $("#play-audio").addEventListener("click", playCurrentWord);
+  const audioButton = $("#play-audio");
+  audioButton.addEventListener("pointerdown", (event) => {
+    if (event.button === 0) playCurrentWord();
+  });
+  audioButton.addEventListener("click", (event) => {
+    if (event.detail === 0) playCurrentWord();
+  });
   window.addEventListener("beforeunload", () => stopAudio(false));
-  if ("speechSynthesis" in window) speechSynthesis.addEventListener?.("voiceschanged", () => selectVoice());
+  if ("speechSynthesis" in window) {
+    selectVoice();
+    speechSynthesis.addEventListener?.("voiceschanged", () => selectVoice());
+  }
 }
 
 function showToast(message) {
