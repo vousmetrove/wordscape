@@ -82,7 +82,12 @@ svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: 
 .meaning-prompt { padding: 48px 10px 30px; text-align: center; }
 .meaning-prompt > span { color: var(--muted); font: 8px var(--mono); letter-spacing: .16em; }
 .meaning-prompt .phonetic { margin: 16px 0 9px; color: var(--green); font: 25px var(--serif); }
-.meaning-prompt h2 { max-width: 620px; margin: auto; font: 400 clamp(31px, 4vw, 49px)/1.12 var(--serif); }
+.meaning-reveal { min-width: 240px; max-width: 620px; min-height: 60px; margin: auto; padding: 12px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 1px dashed var(--line); border-radius: 14px; color: var(--green-dark); background: rgba(255,255,255,.38); cursor: pointer; transition: border-color .18s, background .18s, transform .18s; }
+.meaning-reveal:hover { border-color: var(--green); background: rgba(202,244,76,.1); transform: translateY(-1px); }
+.meaning-reveal:disabled { cursor: default; transform: none; }
+.meaning-reveal > span { color: var(--muted); font: 9px var(--mono); letter-spacing: .1em; }
+.meaning-reveal strong { font: 400 clamp(31px, 4vw, 49px)/1.12 var(--serif); }
+.meaning-reveal.revealed { border-style: solid; }
 .meaning-prompt > p:last-child { margin: 13px 0 0; color: var(--muted); font-size: 11px; }
 
 .audio-button { width: min(460px, 100%); min-height: 86px; margin: 0 auto 42px; padding: 14px 22px; display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 17px; border: 0; border-radius: 48px; color: var(--white); background: var(--ink); box-shadow: 0 16px 38px rgba(37,42,31,.18); text-align: left; cursor: pointer; transition: transform .18s, background .18s; }
@@ -168,7 +173,8 @@ svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: 
   .dictation-card { min-height: 650px; padding: 20px 15px 28px; border-radius: 15px; }
   .meaning-prompt { padding: 36px 5px 25px; }
   .meaning-prompt .phonetic { font-size: 22px; }
-  .meaning-prompt h2 { font-size: 33px; }
+  .meaning-reveal { width: 100%; min-width: 0; }
+  .meaning-reveal strong { font-size: 33px; }
   .audio-button { grid-template-columns: 52px 1fr; min-height: 78px; margin-bottom: 31px; padding: 12px 17px; }
   .audio-icon { width: 52px; height: 52px; }
   .attempt-heading { align-items: flex-start; }

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="雅思听力词汇逐词听写练习：按章节训练，连续三次拼写正确后进入下一词。" />
+    <meta name="description" content="雅思听力词汇逐词听写练习：按章节训练，累计三次拼写正确后进入下一词。" />
     <meta name="theme-color" content="#f4f1e8" />
     <title>Wordscape Listening — 雅思听力听写</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
@@ -22,7 +22,7 @@
       <section class="hero">
         <p class="eyebrow">IELTS LISTENING PRACTICE</p>
         <h1>听见声音，<br /><em>写出单词。</em></h1>
-        <p>每次只练一个词。听发音，根据音标和中文释义完成拼写；连续正确三次后，自动进入下一个词。</p>
+        <p>每次只练一个词。听发音，按需查看中文释义并完成拼写；累计正确三次后，自动进入下一个词。</p>
       </section>
 
       <section class="practice-layout">
@@ -66,14 +66,14 @@
 
           <div class="method-note">
             <span>3×</span>
-            <p><strong>连续正确三次</strong><small>任何一次拼写错误都会重新计算连续正确次数。</small></p>
+            <p><strong>累计正确三次</strong><small>答错会标红，但不会清除已经获得的正确次数。</small></p>
           </div>
         </aside>
 
         <section class="dictation-card" id="dictation-card">
           <header class="card-header">
             <div><span id="current-chapter">CHAPTER</span><small id="attempt-label">准备听写</small></div>
-            <div class="streak" id="streak-indicator" aria-label="连续正确次数">
+            <div class="streak" id="streak-indicator" aria-label="累计正确次数">
               <i></i><i></i><i></i><b><span id="correct-count">0</span>/3</b>
             </div>
           </header>
@@ -81,8 +81,11 @@
           <div class="meaning-prompt">
             <span>LISTEN · SPELL · REPEAT</span>
             <p class="phonetic" id="word-phonetic">/ /</p>
-            <h2 id="word-chinese">中文释义</h2>
-            <p>单词拼写保持隐藏。先听，再输入。</p>
+            <button class="meaning-reveal" id="meaning-reveal" type="button" aria-expanded="false">
+              <span id="meaning-reveal-label">点击查看中文释义</span>
+              <strong id="word-chinese" hidden>中文释义</strong>
+            </button>
+            <p>单词拼写和中文默认隐藏。先听，再输入。</p>
           </div>
 
           <button class="audio-button" id="play-audio" type="button">
@@ -103,7 +106,7 @@
 
           <div class="word-complete" id="word-complete" hidden>
             <span>✓</span>
-            <div><small>THREE IN A ROW</small><h2 id="completed-word">well done</h2><p>连续三次拼写正确，正在进入下一个词……</p></div>
+            <div><small>THREE CORRECT</small><h2 id="completed-word">well done</h2><p>累计三次拼写正确，正在进入下一个词……</p></div>
           </div>
         </section>
       </section>

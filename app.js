@@ -14,7 +14,7 @@ const defaultState = {
 };
 
 let state = loadState();
-let correctStreak = 0;
+let correctCount = 0;
 let attemptNumber = 0;
 let currentEntry = null;
 let playToken = 0;
@@ -109,7 +109,7 @@ function init() {
 function renderWord() {
   clearTimeout(advanceTimer);
   stopAudio(false);
-  correctStreak = 0;
+  correctCount = 0;
   attemptNumber = 0;
   renderStreak();
 
@@ -128,6 +128,8 @@ function renderWord() {
   if (!currentEntry) {
     $("#word-phonetic").textContent = "/ /";
     $("#word-chinese").textContent = "该章节没有词汇";
+    setMeaningRevealed(true);
+    $("#meaning-reveal").disabled = true;
     $("#play-audio").disabled = true;
     $("#attempt-label").textContent = "请选择其他章节";
     return;
@@ -138,6 +140,8 @@ function renderWord() {
     : "暂无音标";
   $("#word-phonetic").textContent = phonetic;
   $("#word-chinese").textContent = currentEntry.chinese;
+  $("#meaning-reveal").disabled = false;
+  setMeaningRevealed(false);
   $("#play-audio").disabled = false;
   $("#attempt-label").textContent = "等待第 1 次输入";
   updateAudioStatus();
@@ -146,8 +150,17 @@ function renderWord() {
 }
 
 function renderStreak() {
-  $("#correct-count").textContent = correctStreak;
-  $$("#streak-indicator i").forEach((dot, index) => dot.classList.toggle("filled", index < correctStreak));
+  $("#correct-count").textContent = correctCount;
+  $$("#streak-indicator i").forEach((dot, index) => dot.classList.toggle("filled", index < correctCount));
+}
+
+function setMeaningRevealed(revealed) {
+  const button = $("#meaning-reveal");
+  const meaning = $("#word-chinese");
+  meaning.hidden = !revealed;
+  button.classList.toggle("revealed", revealed);
+  button.setAttribute("aria-expanded", String(revealed));
+  $("#meaning-reveal-label").textContent = revealed ? "点击隐藏中文释义" : "点击查看中文释义";
 }
 
 function addAttemptInput() {
@@ -196,12 +209,12 @@ function handleAttempt(event) {
 
   const isCorrect = normaliseAnswer(typed) === normaliseAnswer(currentEntry.word);
   if (isCorrect) {
-    correctStreak += 1;
+    correctCount += 1;
     form.classList.add("correct");
-    feedback.innerHTML = `<p class="correct-message"><span>✓</span> 拼写正确，连续正确 ${correctStreak}/3</p>`;
+    feedback.innerHTML = `<p class="correct-message"><span>✓</span> 拼写正确，累计正确 ${correctCount}/3</p>`;
     renderStreak();
 
-    if (correctStreak >= 3) {
+    if (correctCount >= 3) {
       completeCurrentWord();
     } else {
       addAttemptInput();
@@ -209,11 +222,9 @@ function handleAttempt(event) {
     return;
   }
 
-  correctStreak = 0;
   form.classList.add("wrong");
   feedback.innerHTML = buildDifference(currentEntry.word, typed);
-  renderStreak();
-  $("#attempt-label").textContent = "错误位置已标红，重新开始连续计数";
+  $("#attempt-label").textContent = `错误位置已标红，累计正确保留为 ${correctCount}/3`;
   addAttemptInput();
 }
 
@@ -234,7 +245,7 @@ function buildDifference(target, typed) {
   }
 
   return `
-    <div class="wrong-message"><span>×</span><p><strong>拼写有误</strong><small>错误或缺少的位置已标红，连续正确次数归零。</small></p></div>
+    <div class="wrong-message"><span>×</span><p><strong>拼写有误</strong><small>错误或缺少的位置已标红，已获得的正确次数继续保留。</small></p></div>
     <div class="difference-panel">
       <div><small>正确拼写</small><code>${expectedMarkup}</code></div>
       <div><small>你的输入</small><code>${actualMarkup}</code></div>
@@ -246,7 +257,7 @@ function completeCurrentWord() {
   $("#dictation-card").classList.add("complete");
   $("#completed-word").textContent = currentEntry.word;
   $("#word-complete").hidden = false;
-  $("#attempt-label").textContent = "连续三次正确";
+  $("#attempt-label").textContent = "累计三次正确";
   $("#word-complete").scrollIntoView({ behavior: "smooth", block: "nearest" });
 
   const completedChapter = state.chapter;
@@ -345,6 +356,10 @@ function bindEvents() {
     state.speechRate = Number(event.target.value) || 1;
     saveState();
     stopAudio();
+  });
+
+  $("#meaning-reveal").addEventListener("click", () => {
+    setMeaningRevealed($("#word-chinese").hidden);
   });
 
   const audioButton = $("#play-audio");
