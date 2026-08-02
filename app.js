@@ -283,12 +283,8 @@ function completeCurrentWord() {
 function voiceQualityScore(voice) {
   const language = String(voice.lang || "").toLocaleLowerCase();
   const name = String(voice.name || "").toLocaleLowerCase();
-  let score = 0;
-
-  if (language === "en-gb") score += 120;
-  else if (/^en-(ie|au|nz)/.test(language)) score += 85;
-  else if (language.startsWith("en")) score += 55;
-  else return -1;
+  if (language !== "en-gb" && !language.startsWith("en-gb-")) return -1;
+  let score = 300;
 
   if (/natural|neural|premium|enhanced/.test(name)) score += 80;
   if (/sonia|libby|ryan|google uk english/.test(name)) score += 45;
@@ -315,12 +311,15 @@ function normaliseAudioUrl(url = "") {
   return url;
 }
 
-function pronunciationQualityScore(pronunciation) {
+function isBritishRecording(pronunciation) {
   const audio = String(pronunciation.audio || "").toLocaleLowerCase();
-  let score = pronunciation.audio ? 10 : 0;
-  if (/(?:-uk|_gb|[-_/]gb[-_.]|british)/.test(audio)) score += 100;
-  else if (/(?:-au|[-_/]au[-_.])/.test(audio)) score += 55;
-  else if (/(?:-us|_us|[-_/]us[-_.])/.test(audio)) score += 35;
+  const region = String(pronunciation.region || pronunciation.dialect || "").toLocaleLowerCase();
+  return /(?:^|[-_/])(uk|gb|british)(?:[-_./]|$)/.test(audio)
+    || /\b(?:uk|gb|british|united kingdom|great britain)\b/.test(region);
+}
+
+function pronunciationQualityScore(pronunciation) {
+  let score = 100;
   if (pronunciation.text) score += 5;
   return score;
 }
@@ -351,7 +350,7 @@ function prepareDictionaryPronunciation(word) {
       const entries = await response.json();
       const pronunciations = entries.flatMap((entry) => entry.phonetics || []);
       const best = pronunciations
-        .filter((pronunciation) => pronunciation.audio)
+        .filter((pronunciation) => pronunciation.audio && isBritishRecording(pronunciation))
         .sort((left, right) => pronunciationQualityScore(right) - pronunciationQualityScore(left))[0];
       if (!best) return null;
 
@@ -488,7 +487,7 @@ function updateAudioStatus() {
   const repeatCount = Number(state.repeatCount) || 1;
   const rate = Number(state.speechRate) || 1;
   const hasRecording = Boolean(currentEntry && readyPronunciations.get(pronunciationKey(currentEntry.word))?.audio);
-  const source = hasRecording ? "词典真人发音" : "优选英式发音";
+  const source = hasRecording ? "词典英式真人发音" : "严格英式发音";
   $("#audio-status").textContent = `每次播放 ${repeatCount} 遍 · ${rate}× 语速 · ${source}`;
 }
 
