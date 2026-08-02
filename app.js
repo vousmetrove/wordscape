@@ -1,6 +1,7 @@
 const STORAGE_KEY = "wordscape-english-first-v1";
 const DAY = 86_400_000;
 const REVIEW_INTERVALS = [1, 2, 4, 7, 15, 30, 60];
+const LISTENING_PAGE_SIZE = 72;
 
 const defaultState = {
   settings: { goal: 20, banks: ["CET4", "CET6", "IELTS"], provider: "youdao" },
@@ -19,12 +20,16 @@ const defaultState = {
 
 let state = loadState();
 let words = [...window.WORD_DATA, ...state.customWords];
+const listeningWords = Array.isArray(window.LISTENING_WORD_DATA) ? window.LISTENING_WORD_DATA : [];
+const listeningMeta = window.LISTENING_LIBRARY_META || { total: listeningWords.length, rawRows: listeningWords.length, chapters: [] };
 let session = [];
 let sessionIndex = 0;
 let sessionMode = "learn";
 let toastTimer;
 let searchTimer;
 let activeAudio = null;
+let listeningLimit = LISTENING_PAGE_SIZE;
+let listeningActiveButton = null;
 let wordStartedAt = Date.now();
 let chineseUsedThisWord = false;
 
@@ -162,6 +167,7 @@ function getPlan() {
 function init() {
   renderDate();
   renderBanks();
+  initListeningLibrary();
   renderDashboard();
   renderReview();
   renderMistakes();
@@ -270,6 +276,7 @@ function renderProgress() {
 }
 
 function showView(name) {
+  if (name !== "listening") stopListeningPronunciation();
   $$(".view").forEach((view) => view.classList.toggle("active", view.dataset.viewPanel === name));
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
   document.body.classList.remove("menu-open");
@@ -277,6 +284,7 @@ function showView(name) {
   if (name === "review") renderReview();
   if (name === "mistakes") renderMistakes();
   if (name === "progress") renderProgress();
+  if (name === "listening") renderListeningLibrary();
 }
 
 function startSession(queue, mode = "learn") {
@@ -698,6 +706,121 @@ function escapeHtml(value) {
   return value.replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
 }
 
+function escapeHTML(value = "") {
+  return String(value).replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character]);
+}
+
+function initListeningLibrary() {
+  $("#listening-total").textContent = Number(listeningMeta.total || listeningWords.length).toLocaleString();
+  $("#listening-raw-total").textContent = Number(listeningMeta.rawRows || listeningWords.length).toLocaleString();
+  $("#listening-chapter-total").textContent = (listeningMeta.chapters || []).length.toLocaleString();
+  $("#listening-nav-count").textContent = listeningWords.length >= 1000
+    ? `${(listeningWords.length / 1000).toFixed(1)}k`
+    : listeningWords.length.toLocaleString();
+  $("#listening-source").textContent = `来源：${listeningMeta.sourceFile || "用户提供的雅思听力词表"} · 发音由当前设备的英语语音提供`;
+
+  const chapterCounts = new Map();
+  listeningWords.forEach((entry) => {
+    (entry.chapters || []).forEach((chapter) => chapterCounts.set(chapter, (chapterCounts.get(chapter) || 0) + 1));
+  });
+  const chapters = listeningMeta.chapters?.length ? listeningMeta.chapters : [...chapterCounts.keys()];
+  $("#listening-chapter").innerHTML = [
+    '<option value="all">全部章节</option>',
+    ...chapters.map((chapter) => `<option value="${escapeHTML(chapter)}">${escapeHTML(chapter)} · ${chapterCounts.get(chapter) || 0} 词</option>`),
+  ].join("");
+  renderListeningLibrary();
+}
+
+function listeningMatches() {
+  const query = $("#listening-search").value.trim().toLocaleLowerCase();
+  const chapter = $("#listening-chapter").value;
+  return listeningWords
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => {
+      const inChapter = chapter === "all" || (entry.chapters || []).includes(chapter);
+      const haystack = `${entry.word} ${entry.phonetic || ""} ${entry.chinese || ""}`.toLocaleLowerCase();
+      return inChapter && (!query || haystack.includes(query));
+    });
+}
+
+function renderListeningLibrary() {
+  const matches = listeningMatches();
+  const visible = matches.slice(0, listeningLimit);
+  const chapter = $("#listening-chapter").value;
+  const query = $("#listening-search").value.trim();
+
+  $("#listening-match-count").textContent = matches.length.toLocaleString();
+  $("#listening-result-title").textContent = chapter === "all"
+    ? (query ? `“${query}” 的搜索结果` : "全部听力词汇")
+    : `${chapter} 章节${query ? ` · “${query}”` : ""}`;
+  $("#listening-empty").hidden = matches.length > 0;
+  $("#listening-load-more").hidden = !matches.length || visible.length >= matches.length;
+  $("#listening-load-more").textContent = `继续显示更多词汇（已显示 ${visible.length.toLocaleString()} / ${matches.length.toLocaleString()}）`;
+
+  $("#listening-word-grid").innerHTML = visible.map(({ entry, index }) => {
+    const phonetic = entry.phonetic ? `/${entry.phonetic.replace(/^\/+|\/+$/g, "")}/` : "暂无音标";
+    return `
+      <article class="listening-word-card">
+        <div class="listening-word-copy">
+          <span>${escapeHTML((entry.chapters || []).join(" · "))}</span>
+          <h3>${escapeHTML(entry.word)}</h3>
+          <p class="listening-phonetic">${escapeHTML(phonetic)}</p>
+          <p class="listening-chinese">${escapeHTML(entry.chinese)}</p>
+        </div>
+        <button type="button" data-listening-index="${index}" aria-label="播放 ${escapeHTML(entry.word)} 的发音">
+          <svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5Zm12.5 1.2a3 3 0 0 1 0 3.6M19.7 8a6 6 0 0 1 0 8" /></svg>
+          <span>发音</span><small>${escapeHTML($("#listening-speed").selectedOptions[0].textContent.split(" ")[0])}</small>
+        </button>
+      </article>`;
+  }).join("");
+}
+
+function stopListeningPronunciation() {
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  if (listeningActiveButton) {
+    listeningActiveButton.classList.remove("playing");
+    listeningActiveButton.querySelector("span").textContent = "发音";
+  }
+  listeningActiveButton = null;
+}
+
+function playListeningPronunciation(index, button) {
+  const entry = listeningWords[index];
+  if (!entry || !("speechSynthesis" in window)) {
+    showToast("当前浏览器不支持语音播放");
+    return;
+  }
+  if (listeningActiveButton === button && speechSynthesis.speaking) {
+    stopListeningPronunciation();
+    return;
+  }
+
+  stopListeningPronunciation();
+  const utterance = new SpeechSynthesisUtterance(entry.word);
+  utterance.lang = "en-GB";
+  utterance.rate = Number($("#listening-speed").value) || 1;
+  const voices = speechSynthesis.getVoices();
+  const britishVoice = voices.find((voice) => voice.lang.toLowerCase() === "en-gb")
+    || voices.find((voice) => voice.lang.toLowerCase().startsWith("en"));
+  if (britishVoice) utterance.voice = britishVoice;
+
+  listeningActiveButton = button;
+  button.classList.add("playing");
+  button.querySelector("span").textContent = "停止";
+  const finish = () => {
+    if (listeningActiveButton === button) stopListeningPronunciation();
+  };
+  utterance.addEventListener("end", finish, { once: true });
+  utterance.addEventListener("error", finish, { once: true });
+  speechSynthesis.speak(utterance);
+}
+
 function showToast(message) {
   clearTimeout(toastTimer);
   $("#toast").textContent = message;
@@ -737,6 +860,24 @@ function bindEvents() {
     searchTimer = setTimeout(() => searchLocal(event.target.value), 120);
   });
   $("#word-search").addEventListener("keydown", (event) => { if (event.key === "Enter") lookupRemote(event.target.value); });
+  $("#listening-search").addEventListener("input", () => {
+    listeningLimit = LISTENING_PAGE_SIZE;
+    renderListeningLibrary();
+  });
+  $("#listening-chapter").addEventListener("change", () => {
+    listeningLimit = LISTENING_PAGE_SIZE;
+    stopListeningPronunciation();
+    renderListeningLibrary();
+  });
+  $("#listening-speed").addEventListener("change", () => {
+    stopListeningPronunciation();
+    renderListeningLibrary();
+    showToast(`发音速度已调整为 ${$("#listening-speed").selectedOptions[0].textContent.split(" ")[0]}`);
+  });
+  $("#listening-load-more").addEventListener("click", () => {
+    listeningLimit += LISTENING_PAGE_SIZE;
+    renderListeningLibrary();
+  });
   $("#word-import").addEventListener("change", (event) => { if (event.target.files[0]) importWords(event.target.files[0]); });
 
   document.addEventListener("click", (event) => {
@@ -753,6 +894,8 @@ function bindEvents() {
       $("#search-dialog").close();
       startSession([word], "search");
     }
+    const listeningButton = event.target.closest("[data-listening-index]");
+    if (listeningButton) playListeningPronunciation(Number(listeningButton.dataset.listeningIndex), listeningButton);
   });
 
   document.addEventListener("keydown", (event) => {

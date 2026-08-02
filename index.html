@@ -34,6 +34,10 @@
             <svg viewBox="0 0 24 24"><path d="M4 5.5C6 4.5 8 4 10 4c1.5 0 2.5.4 2.5 1.4V20c0-1.1-1-1.5-2.5-1.5-2 0-4 .5-6 1.5V5.5Zm16 0C18 4.5 16 4 14 4c-.6 0-1.1.1-1.5.3" /></svg>
             <span>Word banks</span>
           </button>
+          <button class="nav-item" type="button" data-view="listening">
+            <svg viewBox="0 0 24 24"><path d="M4 13v-2a8 8 0 0 1 16 0v2M4 13h3v7H5a1 1 0 0 1-1-1v-6Zm16 0h-3v7h2a1 1 0 0 0 1-1v-6Z" /></svg>
+            <span>Listening</span><b id="listening-nav-count">0</b>
+          </button>
           <button class="nav-item" type="button" data-view="progress">
             <svg viewBox="0 0 24 24"><path d="M5 20V10m7 10V4m7 16v-7" /></svg>
             <span>Progress</span>
@@ -144,6 +148,50 @@
               <div><span class="card-kicker">LICENSED DATA IMPORT</span><h2>Bring your own authorised word book.</h2><p>Import JSON or CSV with a word, simple English definition, sentence, and source. Visual matching is intentionally excluded.</p></div>
               <label class="import-button">Choose a file<input type="file" id="word-import" accept=".json,.csv" hidden /></label>
             </article>
+          </section>
+
+          <section class="view listening-view" id="view-listening" data-view-panel="listening">
+            <div class="page-heading compact">
+              <p class="eyebrow">IELTS LISTENING LIBRARY</p>
+              <h1>Hear the word.<br /><em>Catch it clearly.</em></h1>
+              <p>这套听力词库只呈现音标、发音和中文释义。选择章节与语速，专注训练声音和含义之间的连接。</p>
+            </div>
+
+            <div class="listening-summary" aria-label="Listening library summary">
+              <article><span>整理后词数</span><strong id="listening-total">0</strong><small>去除重复词条</small></article>
+              <article><span>原始记录</span><strong id="listening-raw-total">0</strong><small>来自自测表</small></article>
+              <article><span>章节</span><strong id="listening-chapter-total">0</strong><small>保留原章节分类</small></article>
+            </div>
+
+            <div class="listening-toolbar">
+              <label class="listening-search-field">
+                <span>搜索词汇或中文</span>
+                <input id="listening-search" type="search" placeholder="例如 accommodation / 住宿" autocomplete="off" />
+              </label>
+              <label>
+                <span>章节</span>
+                <select id="listening-chapter"><option value="all">全部章节</option></select>
+              </label>
+              <label>
+                <span>发音速度</span>
+                <select id="listening-speed">
+                  <option value="0.75">0.75× 慢速</option>
+                  <option value="1" selected>1× 正常</option>
+                  <option value="1.25">1.25×</option>
+                  <option value="1.5">1.5×</option>
+                  <option value="2">2× 快速</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="listening-results-head">
+              <div><span class="card-kicker">VOCABULARY</span><h2 id="listening-result-title">全部听力词汇</h2></div>
+              <p><strong id="listening-match-count">0</strong> 个匹配词条</p>
+            </div>
+            <div class="listening-word-grid" id="listening-word-grid"></div>
+            <div class="listening-empty" id="listening-empty" hidden><span>⌕</span><h2>没有找到匹配词汇</h2><p>请尝试其他英文、中文或章节。</p></div>
+            <button class="listening-load-more" id="listening-load-more" type="button" hidden>继续显示更多词汇</button>
+            <p class="listening-source" id="listening-source"></p>
           </section>
 
           <section class="view" id="view-progress" data-view-panel="progress">
@@ -271,6 +319,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./listening-data.js"></script>
     <script src="./data.js"></script>
     <script src="./app.js"></script>
   </body>

@@ -12,6 +12,7 @@ Chinese stays hidden unless the learner explicitly asks for it.
 
 - Flexible daily target with any positive number and quick presets up to 200
 - CET-4, CET-6, and IELTS categories
+- Dedicated IELTS listening library with 5,230 deduplicated entries, 34 chapter filters, phonetics, Chinese meanings, and 0.75×–2× pronunciation speed
 - Reviews automatically reserve the first places inside the daily target while staying in a separate assessment space
 - Adaptive per-word scheduling based on difficulty, stability, retrievability, and the learner's local history
 - Three failed recalls automatically move a word into the mistake book
@@ -62,6 +63,12 @@ Use `data/import-template.json` as the schema. Required fields are:
 - `definition` (simple English)
 
 Recommended fields are `bank`, `phonetic`, `pos`, `topic`, `example`, `source`, `sourceUrl`, and `chinese`. Images, videos, scenes, and emoji cues are deliberately ignored because a weak visual match can teach the wrong meaning.
+
+## IELTS listening library
+
+The Listening view is intentionally separate from the English-first learning queue. It contains only the information needed for sound recognition: the word, its phonetic transcription, a device-generated British English pronunciation, and the supplied Chinese meaning. Learners can search in English or Chinese, filter by the workbook's original chapter numbers, and choose 0.75×, 1×, 1.25×, 1.5×, or 2× speech speed.
+
+`listening-data.js` was generated from the user-provided `雅思听力语料库智能自测表.xlsx`. The workbook itself is not committed. The import consolidated 5,918 usable rows into 5,230 unique entries while preserving all 34 source chapter labels.
 
 ## Learning and assessment
 
@@ -123,6 +130,7 @@ wordscape/
 ├── index.html                # App views and study interface
 ├── styles.css                # Responsive visual system
 ├── data.js                   # Enriched English-first seed words
+├── listening-data.js         # User-provided IELTS listening vocabulary
 └── app.js                    # Scheduling, study, search, import, and progress
 ```
 
