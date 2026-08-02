@@ -1,326 +1,122 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Learn English through simple definitions, natural examples, optional Chinese, and adaptive review." />
-    <meta name="theme-color" content="#f3f0e8" />
-    <title>Wordscape — Think in English</title>
+    <meta name="description" content="雅思听力词汇逐词听写练习：按章节训练，连续三次拼写正确后进入下一词。" />
+    <meta name="theme-color" content="#f4f1e8" />
+    <title>Wordscape Listening — 雅思听力听写</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <aside class="sidebar">
-        <a class="brand" href="#" aria-label="Wordscape home">
-          <span class="brand-mark">w</span>
-          <span>wordscape</span>
-        </a>
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="Wordscape Listening 首页">
+        <span class="brand-mark">w</span>
+        <span><strong>wordscape</strong><small>LISTENING DICTATION</small></span>
+      </a>
+      <div class="header-meta"><span id="library-total">0</span> words · <span id="library-chapters">0</span> chapters</div>
+    </header>
 
-        <nav class="side-nav" aria-label="Main navigation">
-          <button class="nav-item active" type="button" data-view="today">
-            <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V21h-6v-6H9v6H3v-9.5Z" /></svg>
-            <span>Today</span>
-          </button>
-          <button class="nav-item" type="button" data-view="review">
-            <svg viewBox="0 0 24 24"><path d="M4 4v6h6M5.5 15a7 7 0 1 0 .7-7.9L4 10" /></svg>
-            <span>Review</span><b id="review-nav-count">0</b>
-          </button>
-          <button class="nav-item" type="button" data-view="mistakes">
-            <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6V3Zm3 6h6m-6 4h6m-6 4h3" /></svg>
-            <span>Mistake book</span><b id="mistake-nav-count">0</b>
-          </button>
-          <button class="nav-item" type="button" data-view="banks">
-            <svg viewBox="0 0 24 24"><path d="M4 5.5C6 4.5 8 4 10 4c1.5 0 2.5.4 2.5 1.4V20c0-1.1-1-1.5-2.5-1.5-2 0-4 .5-6 1.5V5.5Zm16 0C18 4.5 16 4 14 4c-.6 0-1.1.1-1.5.3" /></svg>
-            <span>Word banks</span>
-          </button>
-          <button class="nav-item" type="button" data-view="listening">
-            <svg viewBox="0 0 24 24"><path d="M4 13v-2a8 8 0 0 1 16 0v2M4 13h3v7H5a1 1 0 0 1-1-1v-6Zm16 0h-3v7h2a1 1 0 0 0 1-1v-6Z" /></svg>
-            <span>Listening</span><b id="listening-nav-count">0</b>
-          </button>
-          <button class="nav-item" type="button" data-view="progress">
-            <svg viewBox="0 0 24 24"><path d="M5 20V10m7 10V4m7 16v-7" /></svg>
-            <span>Progress</span>
-          </button>
-        </nav>
+    <main class="page-shell">
+      <section class="hero">
+        <p class="eyebrow">IELTS LISTENING PRACTICE</p>
+        <h1>听见声音，<br /><em>写出单词。</em></h1>
+        <p>每次只练一个词。听发音，根据音标和中文释义完成拼写；连续正确三次后，自动进入下一个词。</p>
+      </section>
 
-        <div class="sidebar-idea">
-          <span class="idea-orb">✦</span>
-          <p><strong>One useful rule</strong>Do not translate first. Explain it in easy English.</p>
-        </div>
-
-        <button class="profile-button" type="button" id="open-settings">
-          <span class="avatar">Y</span>
-          <span><strong>Your plan</strong><small id="profile-goal">20 words a day</small></span>
-          <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
-        </button>
-      </aside>
-
-      <main class="main-content">
-        <header class="topbar">
-          <button class="mobile-menu" type="button" aria-label="Open navigation">
-            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
-          </button>
-          <div class="date-lockup"><span id="today-label">Tuesday</span><small id="date-label">July 22</small></div>
-          <div class="topbar-actions">
-            <button class="search-button" type="button" id="open-search" aria-label="Search words">
-              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
-              <span>Find a word</span><kbd>⌘ K</kbd>
-            </button>
-            <button class="icon-button" type="button" id="header-settings" aria-label="Open settings">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
-            </button>
+      <section class="practice-layout">
+        <aside class="control-panel" aria-label="练习设置">
+          <div class="panel-heading">
+            <span>01</span>
+            <div><small>SET YOUR SESSION</small><h2>选择练习章节</h2></div>
           </div>
-        </header>
 
-        <div class="view-container">
-          <section class="view active" id="view-today" data-view-panel="today">
-            <div class="hero-copy">
-              <p class="eyebrow">TODAY’S PRACTICE</p>
-              <h1>See the meaning.<br /><em>Skip the <span class="mobile-word">translation.</span></em></h1>
-              <p>Hear it, understand it, and tell Wordscape how familiar it feels. Chinese stays hidden unless you truly need it.</p>
-            </div>
+          <label class="control-field">
+            <span>章节</span>
+            <select id="chapter-select" aria-label="选择雅思听力章节"></select>
+          </label>
 
-            <section class="today-grid">
-              <article class="plan-card">
-                <div class="plan-card-head">
-                  <div>
-                    <span class="card-kicker">YOUR DAILY MIX</span>
-                    <h2><span id="plan-total">20</span> words across two clear spaces.</h2>
-                  </div>
-                  <button class="mini-settings" type="button" data-open-settings>Adjust goal</button>
-                </div>
+          <label class="control-field">
+            <span>每次点击播放</span>
+            <select id="repeat-select" aria-label="选择发音重复次数">
+              <option value="1">1 次</option>
+              <option value="2">2 次</option>
+              <option value="3" selected>3 次</option>
+              <option value="5">5 次</option>
+              <option value="10">10 次</option>
+            </select>
+          </label>
 
-                <div class="mix-visual" aria-label="Daily plan breakdown">
-                  <div class="mix-numbers">
-                    <span><strong id="due-count">0</strong><small>due review</small></span>
-                    <span><strong id="new-count">20</strong><small>new words</small></span>
-                  </div>
-                  <div class="mix-bar"><i class="review-fill"></i><i class="new-fill"></i></div>
-                  <p id="mix-explanation">No review is due yet, so today is all new words.</p>
-                </div>
+          <label class="control-field">
+            <span>播放速度</span>
+            <select id="speed-select" aria-label="选择发音速度">
+              <option value="0.75">0.75× 慢速</option>
+              <option value="1" selected>1× 正常</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2× 快速</option>
+            </select>
+          </label>
 
-                <div class="plan-bottom">
-                  <div class="selected-banks" id="selected-banks"></div>
-                  <button class="start-button" type="button" id="start-session">Begin today’s session <span>→</span></button>
-                </div>
-              </article>
+          <div class="session-progress">
+            <div><span>本章进度</span><strong><b id="word-position">1</b> / <span id="chapter-word-total">0</span></strong></div>
+            <div class="progress-track"><i id="chapter-progress-fill"></i></div>
+            <p id="progress-note">进度自动保存在当前浏览器。</p>
+          </div>
 
-              <aside class="curve-card">
-                <div class="curve-head"><span class="curve-icon">⌁</span><span><small>MEMORY CURVE</small><strong>Reviews arrive before you forget.</strong></span></div>
-                <svg class="curve-chart" viewBox="0 0 320 125" aria-label="Ebbinghaus review curve">
-                  <defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#82964b" stop-opacity=".28"/><stop offset="1" stop-color="#82964b" stop-opacity="0"/></linearGradient></defs>
-                  <path class="area" d="M8 20C42 82 67 101 90 104C113 49 137 44 162 96C184 57 209 54 233 91C259 66 282 65 312 84V118H8Z"/>
-                  <path class="line" d="M8 20C42 82 67 101 90 104C113 49 137 44 162 96C184 57 209 54 233 91C259 66 282 65 312 84"/>
-                  <g><circle cx="90" cy="104" r="4"/><circle cx="162" cy="96" r="4"/><circle cx="233" cy="91" r="4"/></g>
-                </svg>
-                <div class="curve-labels"><span>Learn</span><span>Soon</span><span>Adapt</span><span>Later</span><span>Stable</span></div>
-                <p>Audio reviews reserve the first seats inside your daily goal. New learning stays in its own space.</p>
-              </aside>
-            </section>
-
-            <section class="bank-preview">
-              <div class="section-heading">
-                <div><p class="eyebrow">YOUR WORD BANKS</p><h2>Choose the English you need.</h2></div>
-                <button type="button" data-go-view="banks">See all banks <span>→</span></button>
-              </div>
-              <div class="bank-cards" id="bank-preview-cards"></div>
-            </section>
-          </section>
-
-          <section class="view" id="view-review" data-view-panel="review">
-            <div class="page-heading"><p class="eyebrow">AUDIO RECALL</p><h1>Listen. Repeat.<br /><em>Know the meaning.</em></h1><p>Review is separate from learning: hear British, American, or Australian English, repeat aloud, then say whether the meaning is present.</p></div>
-            <div class="empty-state" id="review-empty"><span>⌁</span><h2>Your mind is clear.</h2><p>No words are due right now. New review cards appear automatically.</p><button type="button" data-go-view="today">Learn new words</button></div>
-            <div class="word-table-wrap" id="review-list-wrap" hidden><div class="list-head"><span>Audio card</span><span>Memory step</span><span>History</span></div><div id="review-list"></div><button class="primary-button" id="start-review" type="button">Start audio recall</button></div>
-          </section>
-
-          <section class="view" id="view-mistakes" data-view-panel="mistakes">
-            <div class="page-heading"><p class="eyebrow">MISTAKE BOOK</p><h1>Words that need<br /><em>another useful link.</em></h1><p>A word enters this book after three failed recalls. Study it again here.</p></div>
-            <div class="mistake-grid" id="mistake-grid"></div>
-            <div class="empty-state" id="mistake-empty"><span>✓</span><h2>No stubborn words yet.</h2><p>Three “I forgot” answers will move a word here automatically.</p></div>
-          </section>
-
-          <section class="view" id="view-banks" data-view-panel="banks">
-            <div class="page-heading compact"><p class="eyebrow">WORD BANKS</p><h1>Learn by purpose,<br /><em>not by alphabet.</em></h1><p>Exam lists stay separate, while shared words keep one memory record.</p></div>
-            <div class="full-bank-grid" id="full-bank-grid"></div>
-            <article class="import-card">
-              <div class="import-icon">↓</div>
-              <div><span class="card-kicker">LICENSED DATA IMPORT</span><h2>Bring your own authorised word book.</h2><p>Import JSON or CSV with a word, simple English definition, sentence, and source. Visual matching is intentionally excluded.</p></div>
-              <label class="import-button">Choose a file<input type="file" id="word-import" accept=".json,.csv" hidden /></label>
-            </article>
-          </section>
-
-          <section class="view listening-view" id="view-listening" data-view-panel="listening">
-            <div class="page-heading compact">
-              <p class="eyebrow">IELTS LISTENING LIBRARY</p>
-              <h1>Hear the word.<br /><em>Catch it clearly.</em></h1>
-              <p>这套听力词库只呈现音标、发音和中文释义。选择章节与语速，专注训练声音和含义之间的连接。</p>
-            </div>
-
-            <div class="listening-summary" aria-label="Listening library summary">
-              <article><span>整理后词数</span><strong id="listening-total">0</strong><small>去除重复词条</small></article>
-              <article><span>原始记录</span><strong id="listening-raw-total">0</strong><small>来自自测表</small></article>
-              <article><span>章节</span><strong id="listening-chapter-total">0</strong><small>保留原章节分类</small></article>
-            </div>
-
-            <div class="listening-toolbar">
-              <label class="listening-search-field">
-                <span>搜索词汇或中文</span>
-                <input id="listening-search" type="search" placeholder="例如 accommodation / 住宿" autocomplete="off" />
-              </label>
-              <label>
-                <span>章节</span>
-                <select id="listening-chapter"><option value="all">全部章节</option></select>
-              </label>
-              <label>
-                <span>发音速度</span>
-                <select id="listening-speed">
-                  <option value="0.75">0.75× 慢速</option>
-                  <option value="1" selected>1× 正常</option>
-                  <option value="1.25">1.25×</option>
-                  <option value="1.5">1.5×</option>
-                  <option value="2">2× 快速</option>
-                </select>
-              </label>
-            </div>
-
-            <div class="listening-results-head">
-              <div><span class="card-kicker">VOCABULARY</span><h2 id="listening-result-title">全部听力词汇</h2></div>
-              <p><strong id="listening-match-count">0</strong> 个匹配词条</p>
-            </div>
-            <div class="listening-word-grid" id="listening-word-grid"></div>
-            <div class="listening-empty" id="listening-empty" hidden><span>⌕</span><h2>没有找到匹配词汇</h2><p>请尝试其他英文、中文或章节。</p></div>
-            <button class="listening-load-more" id="listening-load-more" type="button" hidden>继续显示更多词汇</button>
-            <p class="listening-source" id="listening-source"></p>
-          </section>
-
-          <section class="view" id="view-progress" data-view-panel="progress">
-            <div class="page-heading compact"><p class="eyebrow">YOUR PROGRESS</p><h1>Meaning that<br /><em>stays with you.</em></h1></div>
-            <div class="stats-grid">
-              <article><span>Words met</span><strong id="stat-met">0</strong><small>Across every bank</small></article>
-              <article><span>Growing strong</span><strong id="stat-strong">0</strong><small>Stage 3 or higher</small></article>
-              <article><span>Recall rate</span><strong id="stat-rate">—</strong><small>From all answers</small></article>
-              <article><span>Current streak</span><strong id="stat-streak">0d</strong><small>Keep showing up</small></article>
-            </div>
-            <article class="schedule-card"><div><span class="card-kicker">UPCOMING REVIEW LOAD</span><h2>Your next seven days</h2></div><div class="schedule-bars" id="schedule-bars"></div></article>
-          </section>
-        </div>
-      </main>
-    </div>
-
-    <section class="study-overlay" id="study-overlay" aria-hidden="true">
-      <header class="study-header">
-        <button class="study-close" type="button" aria-label="Leave study session">×</button>
-        <div class="study-progress"><span id="study-mode-label">TODAY’S MIX</span><div><i id="study-progress-fill"></i></div><small><b id="study-index">1</b> / <span id="study-total">20</span></small></div>
-        <button class="study-more" type="button" aria-label="More options">•••</button>
-      </header>
-      <main class="study-stage">
-        <div class="study-card" id="study-card">
-          <section class="learning-card" id="learning-card">
-            <div class="word-meta"><span id="study-bank">CET-4</span><span id="study-status">NEW</span><span>ENGLISH FIRST</span></div>
-
-            <div class="word-title-row learning-word-title">
-              <div><small>MEET THE WORD</small><h1 id="study-word">absorb</h1><p><span id="study-phonetic">/əbˈzɔːb/</span> · <span id="study-pos">verb</span></p></div>
-            </div>
-
-            <div class="accent-player" aria-label="Pronunciation accents">
-              <span>PRONUNCIATION</span>
-              <div>
-                <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
-                <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
-                <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
-              </div>
-              <p data-audio-status aria-live="polite">Choose any accent. Compare them only when useful.</p>
-            </div>
-
-            <div class="meaning-block">
-              <small>SIMPLE ENGLISH</small>
-              <p id="study-definition">to take in a liquid, idea, or feeling</p>
-            </div>
-
-            <blockquote class="example-block">
-              <p id="study-example">The dry ground absorbed the rain in minutes.</p>
-              <footer><span id="study-source">Practice context · original</span><a id="study-source-link" href="#" target="_blank" rel="noreferrer" hidden>View source ↗</a></footer>
-            </blockquote>
-
-            <div class="chinese-reveal">
-              <button id="reveal-chinese" type="button"><span>中</span> Show Chinese only if I need it</button>
-              <p id="chinese-result" hidden></p>
-            </div>
-
-            <div class="familiarity-check">
-              <div><small>BE HONEST — THIS TRAINS YOUR SCHEDULE</small><h2>How familiar does it feel now?</h2></div>
-              <div class="familiarity-actions">
-                <button type="button" data-learning-rating="again"><strong>Still new</strong><small>Show it again soon</small></button>
-                <button type="button" data-learning-rating="good"><strong>Starting to stick</strong><small>Normal first review</small></button>
-                <button type="button" data-learning-rating="easy"><strong>Already familiar</strong><small>Give it more space</small></button>
-              </div>
-              <p id="schedule-preview" aria-live="polite">Your choice changes this word's next review.</p>
-            </div>
-          </section>
-
-          <section class="assessment-card" id="assessment-card" hidden>
-            <div class="word-meta"><span id="assessment-bank">CET-4</span><span id="assessment-status">DUE REVIEW</span></div>
-            <div class="assessment-orb" aria-hidden="true"><span></span><i></i><b></b></div>
-            <div class="assessment-prompt">
-              <small>LISTEN · SPEAK · KNOW</small>
-              <h1>Listen, then repeat it aloud.</h1>
-              <p>The spelling and meaning stay hidden. Try one accent or compare all three.</p>
-            </div>
-
-            <div class="accent-player assessment-player" aria-label="Pronunciation accents">
-              <span>CHOOSE AN ACCENT</span>
-              <div>
-                <button type="button" data-accent="gb"><b>UK</b><small>British</small><i></i></button>
-                <button type="button" data-accent="us"><b>US</b><small>American</small><i></i></button>
-                <button type="button" data-accent="au"><b>AU</b><small>Australian</small><i></i></button>
-              </div>
-              <p data-audio-status aria-live="polite">Play an accent, then repeat the word aloud.</p>
-            </div>
-
-            <button class="repeat-confirm" id="confirm-repeat" type="button">I repeated it aloud <span>→</span></button>
-
-            <div class="meaning-question" id="meaning-question" hidden>
-              <span>ONE LAST CHECK</span>
-              <h2>Do you know what it means?</h2>
-              <p>Answer from the simple English meaning in your mind. You do not need to translate it.</p>
-              <div>
-                <button type="button" data-assessment-answer="forgot">No, not yet</button>
-                <button type="button" data-assessment-answer="got">Yes, I know it</button>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <aside class="study-method" id="study-guide">
-          <p class="eyebrow" id="guide-kicker">YOUR MEMORY MODEL</p>
-          <h2 id="guide-title">You judge; Wordscape schedules.</h2>
-          <p id="guide-copy">Simple English and one clear example do the teaching. Your honest familiarity choice teaches the planner when this word should return.</p>
-          <div class="guide-note"><span>中</span><p><strong>Chinese stays optional.</strong><small>Open it only when simple English is not enough.</small></p></div>
+          <div class="method-note">
+            <span>3×</span>
+            <p><strong>连续正确三次</strong><small>任何一次拼写错误都会重新计算连续正确次数。</small></p>
+          </div>
         </aside>
-      </main>
-    </section>
 
-    <dialog class="settings-dialog" id="settings-dialog">
-      <form method="dialog" id="settings-form">
-        <div class="dialog-head"><div><p class="eyebrow">DAILY PLAN</p><h2>Make it fit your life.</h2></div><button value="cancel" aria-label="Close">×</button></div>
-        <label class="goal-field"><span>Words per day <small>reviews included · choose any amount</small></span><input type="number" id="daily-goal" min="1" step="1" value="20" inputmode="numeric" /></label>
-        <div class="goal-presets" aria-label="Quick daily goal choices"><button type="button" data-goal="20">20</button><button type="button" data-goal="50">50</button><button type="button" data-goal="100">100</button><button type="button" data-goal="200">200</button></div>
-        <fieldset><legend>Active word banks</legend><label><input type="checkbox" name="bank" value="CET4" checked /><span><b>CET-4</b><small>College English Test Band 4</small></span></label><label><input type="checkbox" name="bank" value="CET6" checked /><span><b>CET-6</b><small>College English Test Band 6</small></span></label><label><input type="checkbox" name="bank" value="IELTS" checked /><span><b>IELTS</b><small>Academic and general vocabulary</small></span></label></fieldset>
-        <fieldset><legend>Personal memory model</legend><p class="field-note">Wordscape learns only from your activity on this device: familiarity choices, review success, response time, Chinese reveals, and accent plays. This history stays in your browser.</p></fieldset>
-        <fieldset><legend>Chinese fallback</legend><label class="select-label"><span>Translation provider</span><select id="translation-provider"><option value="youdao">Youdao API</option><option value="oxford">Oxford Languages API</option><option value="local">Local seed hints</option></select></label><p class="field-note">API keys stay in server environment variables. Chinese is only requested after you click for it.</p></fieldset>
-        <menu><button value="cancel" class="secondary-button">Cancel</button><button value="default" class="primary-button" id="save-settings">Save plan</button></menu>
-      </form>
-    </dialog>
+        <section class="dictation-card" id="dictation-card">
+          <header class="card-header">
+            <div><span id="current-chapter">CHAPTER</span><small id="attempt-label">准备听写</small></div>
+            <div class="streak" id="streak-indicator" aria-label="连续正确次数">
+              <i></i><i></i><i></i><b><span id="correct-count">0</span>/3</b>
+            </div>
+          </header>
 
-    <dialog class="search-dialog" id="search-dialog">
-      <div class="search-field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg><input id="word-search" type="search" placeholder="Type an English word…" autocomplete="off"/><button type="button" id="close-search">ESC</button></div>
-      <div class="search-results" id="search-results"><p>Search by spelling. Meanings stay in simple English.</p></div>
-    </dialog>
+          <div class="meaning-prompt">
+            <span>LISTEN · SPELL · REPEAT</span>
+            <p class="phonetic" id="word-phonetic">/ /</p>
+            <h2 id="word-chinese">中文释义</h2>
+            <p>单词拼写保持隐藏。先听，再输入。</p>
+          </div>
+
+          <button class="audio-button" id="play-audio" type="button">
+            <span class="audio-icon">
+              <svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5Zm12.5 1.2a3 3 0 0 1 0 3.6M19.7 8a6 6 0 0 1 0 8" /></svg>
+              <i></i><i></i><i></i>
+            </span>
+            <span><strong>点击播放发音</strong><small id="audio-status">每次播放 3 遍 · 英式发音</small></span>
+          </button>
+
+          <section class="attempt-section">
+            <div class="attempt-heading">
+              <div><span>02</span><h3>输入你听到的单词</h3></div>
+              <small>按 Enter 提交</small>
+            </div>
+            <div class="attempt-list" id="attempt-list"></div>
+          </section>
+
+          <div class="word-complete" id="word-complete" hidden>
+            <span>✓</span>
+            <div><small>THREE IN A ROW</small><h2 id="completed-word">well done</h2><p>连续三次拼写正确，正在进入下一个词……</p></div>
+          </div>
+        </section>
+      </section>
+
+      <footer class="page-footer">
+        <span>数据来自用户提供的《雅思听力语料库智能自测表》</span>
+        <span>发音由当前设备的英语语音引擎提供</span>
+      </footer>
+    </main>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="./listening-data.js"></script>
-    <script src="./data.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

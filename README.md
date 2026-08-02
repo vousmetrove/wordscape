@@ -1,143 +1,59 @@
-# Wordscape — think in English
+# Wordscape Listening
 
-Wordscape is an English-first vocabulary learning website for Chinese learners. It replaces automatic word-to-Chinese matching with three direct memory anchors:
+一个专注于雅思听力词汇听写的静态网站。网站一次只练习一个词，不再包含原来的背单词、复习计划、中文翻译或错题本模块。
 
-1. a very simple English definition;
-2. one natural sentence in context;
-3. an honest familiarity choice that trains the schedule.
+## 学习方式
 
-Chinese stays hidden unless the learner explicitly asks for it.
+1. 选择要练习的章节。
+2. 选择每次点击发音后的播放次数和播放速度。
+3. 根据音标、中文释义和音频，在输入框内拼写单词。
+4. 输入错误时，错误或缺失的字符会标红，并自动出现一个新输入框。
+5. 任意一次错误都会把连续正确次数归零；同一个词连续输入正确 3 次后，自动进入下一个词。
 
-## What works now
+页面会记住当前章节、播放设置和各章节的学习位置。学习记录只保存在当前浏览器的 `localStorage` 中。
 
-- Flexible daily target with any positive number and quick presets up to 200
-- CET-4, CET-6, and IELTS categories
-- Dedicated IELTS listening library with 5,230 deduplicated entries, 34 chapter filters, phonetics, Chinese meanings, and 0.75×–2× pronunciation speed
-- Reviews automatically reserve the first places inside the daily target while staying in a separate assessment space
-- Adaptive per-word scheduling based on difficulty, stability, retrievability, and the learner's local history
-- Three failed recalls automatically move a word into the mistake book
-- Words leave the mistake book after reaching memory stage 3 again
-- Matching browser speech voice only as a final fallback for imported words
-- Committed British, American, and Australian neural-voice MP3 files for every enriched seed word
-- Azure Speech fallback for imported words, using separate UK, US, and AU voices
-- On-demand Chinese through a server-side Youdao or Oxford adapter
-- Live English lookup through the Free Dictionary API
-- Local progress, streak, recall rate, and seven-day review load
-- JSON/CSV import for licensed word books and authentic exam sentences
-- Responsive desktop and mobile layouts
+## 词库
 
-The repository includes 30 manually rewritten, fully enriched seed words, 90 pronunciation recordings, and a synchronized 4,020-word CET syllabus list. The raw CET list is deliberately kept separate: words should not enter the learning queue until they have a checked plain-English definition and source-safe sentence.
+- 5,230 个去重后的听力词条
+- 34 个原始章节分类
+- 每个词条包含音标、中文释义和章节信息
+- 数据来自用户提供的《雅思听力语料库智能自测表.xlsx》
 
-## Run locally
+原始表格共整理出 5,918 条可用记录，合并重复词条后得到 5,230 个词。原始工作簿不包含在仓库内。
 
-The core website is static. Open `index.html`, or serve the folder:
+## 发音
+
+发音由浏览器或设备内置的英文语音引擎生成，优先选用英式英语语音。可以选择播放 1、2、3、5 或 10 次，以及 0.75、1、1.25、1.5 或 2 倍速。
+
+建议使用最新版 Chrome、Edge 或 Safari，并确保设备音量开启。如果系统没有英式英语语音，网站会自动使用可用的其他英文语音。
+
+## 本地打开
+
+这是一个纯静态网站。可以直接打开 `index.html`，也可以在项目目录中启动静态文件服务：
 
 ```bash
 python -m http.server 4173
 ```
 
-Then visit `http://localhost:4173`.
+随后访问 `http://localhost:4173`。
 
-The translation route is a Vercel-compatible server function. To test that route locally, use the Vercel development server and copy `.env.example` to `.env.local` with your own credentials.
-
-## Translation configuration
-
-Configure one or both providers as server environment variables:
-
-```text
-YOUDAO_APP_KEY=
-YOUDAO_APP_SECRET=
-OXFORD_APP_ID=
-OXFORD_APP_KEY=
-AZURE_SPEECH_KEY=
-AZURE_SPEECH_REGION=
-```
-
-Secrets are never stored in browser code. If a provider is not configured, the 30 seed words fall back to their local Chinese hints after the learner explicitly clicks “I still need Chinese”.
-
-## Word-bank import
-
-Use `data/import-template.json` as the schema. Required fields are:
-
-- `word`
-- `definition` (simple English)
-
-Recommended fields are `bank`, `phonetic`, `pos`, `topic`, `example`, `source`, `sourceUrl`, and `chinese`. Images, videos, scenes, and emoji cues are deliberately ignored because a weak visual match can teach the wrong meaning.
-
-## IELTS listening library
-
-The Listening view is intentionally separate from the English-first learning queue. It contains only the information needed for sound recognition: the word, its phonetic transcription, a device-generated British English pronunciation, and the supplied Chinese meaning. Learners can search in English or Chinese, filter by the workbook's original chapter numbers, and choose 0.75×, 1×, 1.25×, 1.5×, or 2× speech speed.
-
-`listening-data.js` was generated from the user-provided `雅思听力语料库智能自测表.xlsx`. The workbook itself is not committed. The import consolidated 5,918 usable rows into 5,230 unique entries while preserving all 34 source chapter labels.
-
-## Learning and assessment
-
-The learning card keeps the word, three regional pronunciations, one short English definition, one example, and optional Chinese together. After reading, the learner chooses **Still new**, **Starting to stick**, or **Already familiar**. That choice sets the initial difficulty and review spacing; “Still new” also places the word once more near the end of the current session.
-
-Assessment lives in the separate Review view:
-
-1. play British, American, or Australian audio while spelling and meaning stay hidden;
-2. repeat the word aloud;
-3. answer only whether its meaning is present in your mind.
-
-A “not yet” answer resets the memory stage and adds one failed recall. After three failed recalls, the word enters the mistake book automatically.
-
-## Adaptive memory model
-
-Each word stores its own difficulty, stability, estimated retrievability, failures, timing, and recent review history. Successful recall expands the next interval; forgetting shortens it and raises difficulty. The user profile gradually calibrates interval growth from review success, response time, familiarity choices, Chinese reveals, and accent plays. Existing fixed-interval records migrate automatically.
-
-This is a transparent local model, not a claim to reproduce Maimemo's proprietary data or algorithm. All behavioural history stays in the browser.
-
-## Regenerate local pronunciation files
-
-```bash
-python scripts/generate-audio.py
-```
-
-The script uses the British `en-GB-SoniaNeural`, American `en-US-JennyNeural`, and Australian `en-AU-NatashaNeural` voices. Generated files are stored under `audio/<word>/<accent>.mp3` and work without runtime API credentials.
-
-For authentic exam sentences, only import material you have permission to publish. Every sentence should keep its exam/book name, year, section, and source URL. Do not label generated or adapted examples as authentic exam text.
-
-## Refresh the public CET list
-
-```bash
-node scripts/sync-cet.mjs
-```
-
-This writes `data/cet-4-6-raw.json` with source, license, sync date, and a deduplicated list.
-
-## Data and API sources
-
-- CET vocabulary: [JavaProgrammerLB/cet-word-list](https://github.com/JavaProgrammerLB/cet-word-list), MIT licensed and transcribed from the 2016 National College English Test syllabus.
-- English live lookup: [Free Dictionary API](https://dictionaryapi.dev/), used only when the learner searches for a word not yet enriched locally.
-- Chinese fallback: [Youdao Natural Language Translation API](https://ai.youdao.com/DOCSIRMA/html/trans/api/plwbfy/index.html) or [Oxford Dictionaries API](https://developer.oxforddictionaries.com/endpoints), using the account holder’s own credentials and provider terms.
-- Regional pronunciation: [Azure Speech language and voice support](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support) and its [text-to-speech REST API](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech).
-
-IELTS is not a single official fixed vocabulary list. The built-in IELTS seed is an original thematic curation. Commercial IELTS word books and their example sentences are not copied into this repository; licensed data can be imported using the provided schema.
-
-## Project structure
+## 项目结构
 
 ```text
 wordscape/
-├── api/translate.js          # Youdao and Oxford server-side adapters
-├── api/speech.js             # Azure UK, US, and AU speech fallback
-├── audio/                    # 90 committed regional pronunciation files
-├── data/
-│   ├── cet-4-6-raw.json      # Public CET syllabus vocabulary
-│   └── import-template.json  # Licensed data schema
-├── scripts/sync-cet.mjs      # Reproducible CET vocabulary sync
-├── scripts/generate-audio.py # Reproducible three-accent audio generation
-├── index.html                # App views and study interface
-├── styles.css                # Responsive visual system
-├── data.js                   # Enriched English-first seed words
-├── listening-data.js         # User-provided IELTS listening vocabulary
-└── app.js                    # Scheduling, study, search, import, and progress
+├── index.html          # 听写页面
+├── styles.css         # 页面样式和移动端适配
+├── app.js             # 听写、纠错、连续三次判定和发音逻辑
+├── listening-data.js  # 雅思听力词库
+├── favicon.svg        # 网站图标
+├── LICENSE
+└── README.md
 ```
 
-## Privacy
+## 隐私
 
-Study records stay in the browser’s `localStorage`. A translation request sends only the selected English word to the chosen provider after the learner requests Chinese.
+章节位置和练习设置仅保存在浏览器本地，不会上传个人学习记录。
 
 ## License
 
-Application code is MIT licensed. Imported or synchronized datasets retain their own licenses and source terms.
+应用代码采用 MIT License。导入词库的使用仍需遵守其原始资料的相关权利与使用条件。
