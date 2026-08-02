@@ -19,6 +19,7 @@
 }
 
 [hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; min-height: 100vh; color: var(--ink); background: var(--paper); font-family: var(--sans); }
@@ -43,7 +44,7 @@ svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: 
 
 .practice-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); align-items: start; gap: 18px; }
 .control-panel, .dictation-card { border: 1px solid var(--line); border-radius: 18px; background: var(--white); box-shadow: var(--shadow); }
-.control-panel { position: sticky; top: 18px; padding: 23px; }
+.control-panel { position: sticky; top: 18px; max-height: calc(100vh - 36px); padding: 23px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .panel-heading { display: flex; align-items: center; gap: 13px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .panel-heading > span, .attempt-heading > div > span { width: 33px; height: 33px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; color: var(--green-dark); background: var(--lime); font: 9px var(--mono); }
 .panel-heading small { color: var(--muted); font: 8px var(--mono); letter-spacing: .12em; }
@@ -62,6 +63,24 @@ svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: 
 .progress-track { height: 5px; margin-top: 10px; overflow: hidden; border-radius: 20px; background: var(--paper-deep); }
 .progress-track i { width: 0; height: 100%; display: block; border-radius: inherit; background: var(--green); transition: width .35s; }
 .session-progress p { margin: 9px 0 0; color: var(--muted); font-size: 10px; }
+.word-navigator { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+.word-navigator-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+.word-navigator-heading > div { display: flex; flex-direction: column; gap: 3px; }
+.word-navigator-heading span { font: 18px var(--serif); }
+.word-navigator-heading small { color: var(--muted); font-size: 9px; }
+.word-navigator-heading b { color: var(--green); font: 500 9px var(--mono); }
+.word-search { display: block; margin-top: 12px; }
+.word-search input { width: 100%; height: 39px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; outline: none; color: var(--ink); background: var(--paper); font-size: 12px; }
+.word-search input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(120, 140, 61, .13); }
+.word-list { max-height: 248px; margin-top: 10px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.word-list-item { width: 100%; min-height: 35px; padding: 6px 9px; display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 8px; flex: 0 0 auto; border: 1px solid transparent; border-radius: 8px; color: var(--ink); background: transparent; text-align: left; cursor: pointer; transition: border-color .16s, background .16s, color .16s; }
+.word-list-item:hover { border-color: var(--line); background: var(--paper); }
+.word-list-item:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
+.word-list-item span { color: var(--muted); font: 8px var(--mono); }
+.word-list-item strong { overflow: hidden; font: 500 12px var(--sans); text-overflow: ellipsis; white-space: nowrap; }
+.word-list-item.current { border-color: var(--green); color: var(--white); background: var(--green-dark); }
+.word-list-item.current span { color: var(--lime); }
+.word-list-empty { margin: 14px 2px 0; color: var(--muted); font-size: 10px; text-align: center; }
 .method-note { margin-top: 22px; padding: 14px; display: grid; grid-template-columns: 43px 1fr; align-items: center; gap: 11px; border-radius: 12px; color: var(--white); background: var(--ink); }
 .method-note > span { width: 43px; height: 43px; display: grid; place-items: center; border-radius: 50%; color: var(--ink); background: var(--lime); font: 18px var(--serif); }
 .method-note p { margin: 0; }
@@ -153,10 +172,12 @@ svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: 
 
 @media (max-width: 900px) {
   .practice-layout { grid-template-columns: 1fr; }
-  .control-panel { position: static; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .control-panel { position: static; max-height: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; overflow: visible; }
   .panel-heading { grid-column: 1/4; }
   .control-field { margin: 0; }
   .session-progress { grid-column: 1/3; margin-top: 0; padding-top: 0; border: 0; }
+  .word-navigator { grid-column: 1/4; margin-top: 0; }
+  .word-list { max-height: 220px; }
   .method-note { grid-column: 3; margin-top: 0; }
 }
 
@@ -168,8 +189,9 @@ svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: 
   .hero h1 { font-size: clamp(53px, 16vw, 72px); }
   .hero > p:last-child { font-size: 15px; }
   .control-panel { display: block; }
-  .control-field, .session-progress, .method-note { margin-top: 18px; }
+  .control-field, .session-progress, .word-navigator, .method-note { margin-top: 18px; }
   .session-progress { padding-top: 18px; border-top: 1px solid var(--line); }
+  .word-list { max-height: 260px; }
   .dictation-card { min-height: 650px; padding: 20px 15px 28px; border-radius: 15px; }
   .meaning-prompt { padding: 36px 5px 25px; }
   .meaning-prompt .phonetic { font-size: 22px; }
