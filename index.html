@@ -104,6 +104,20 @@
             <p>单词拼写和中文默认隐藏。先听，再输入。</p>
           </div>
 
+          <section class="cambridge-example" id="cambridge-example" hidden>
+            <button class="example-reveal" id="example-reveal" type="button" aria-expanded="false">
+              <span>
+                <small>CAMBRIDGE IELTS CONTEXT</small>
+                <strong>查看剑雅听力原句</strong>
+              </span>
+              <b aria-hidden="true">＋</b>
+            </button>
+            <div class="example-content" id="example-content" hidden>
+              <blockquote id="example-sentence"></blockquote>
+              <p id="example-source"></p>
+            </div>
+          </section>
+
           <button class="audio-button" id="play-audio" type="button">
             <span class="audio-icon">
               <svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5Zm12.5 1.2a3 3 0 0 1 0 3.6M19.7 8a6 6 0 0 1 0 8" /></svg>
@@ -135,6 +149,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="./listening-data.js"></script>
+    <script src="./cambridge-examples.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
