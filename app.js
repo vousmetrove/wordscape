@@ -3,6 +3,7 @@ const SPEECH_RATES = [1, 1.2, 1.4, 1.6];
 const DICTIONARY_API = "https://api.dictionaryapi.dev/api/v2/entries/en/";
 const library = Array.isArray(window.LISTENING_WORD_DATA) ? window.LISTENING_WORD_DATA : [];
 const meta = window.LISTENING_LIBRARY_META || { total: library.length, rawRows: library.length, chapters: [] };
+const cambridgeExamples = window.CAMBRIDGE_EXAMPLES || {};
 
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
@@ -201,6 +202,7 @@ function renderWord() {
 
   if (!currentEntry) {
     $("#word-phonetic").textContent = "/ /";
+    renderCambridgeExample(null);
     $("#word-chinese").textContent = "该章节没有词汇";
     setMeaningRevealed(true);
     $("#meaning-reveal").disabled = true;
@@ -214,6 +216,7 @@ function renderWord() {
     : "暂无音标";
   $("#word-phonetic").textContent = phonetic;
   $("#word-chinese").textContent = currentEntry.chinese;
+  renderCambridgeExample(currentEntry);
   $("#meaning-reveal").disabled = false;
   setMeaningRevealed(false);
   $("#play-audio").disabled = false;
@@ -238,6 +241,51 @@ function setMeaningRevealed(revealed) {
   button.classList.toggle("revealed", revealed);
   button.setAttribute("aria-expanded", String(revealed));
   $("#meaning-reveal-label").textContent = revealed ? "点击隐藏中文释义" : "点击查看中文释义";
+}
+
+function setExampleRevealed(revealed) {
+  const button = $("#example-reveal");
+  const content = $("#example-content");
+  content.hidden = !revealed;
+  button.classList.toggle("revealed", revealed);
+  button.setAttribute("aria-expanded", String(revealed));
+  $("b", button).textContent = revealed ? "−" : "＋";
+}
+
+function appendHighlightedExample(container, sentence, word) {
+  container.replaceChildren();
+  const wordTokens = String(word).match(/[A-Za-z0-9]+(?:'[A-Za-z]+)?/g) || [];
+  if (!wordTokens.length) {
+    container.textContent = sentence;
+    return;
+  }
+
+  const escapedTokens = wordTokens.map((token) => token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const expression = new RegExp(`(^|[^A-Za-z0-9])(${escapedTokens.join("[\\s-]+")})(?=$|[^A-Za-z0-9])`, "i");
+  const match = sentence.match(expression);
+  if (!match || match.index === undefined) {
+    container.textContent = sentence;
+    return;
+  }
+
+  const wordStart = match.index + match[1].length;
+  const wordEnd = wordStart + match[2].length;
+  container.append(document.createTextNode(sentence.slice(0, wordStart)));
+  const mark = document.createElement("mark");
+  mark.textContent = sentence.slice(wordStart, wordEnd);
+  container.append(mark, document.createTextNode(sentence.slice(wordEnd)));
+}
+
+function renderCambridgeExample(entry) {
+  const panel = $("#cambridge-example");
+  const example = entry ? cambridgeExamples[normaliseAnswer(entry.word)] : null;
+  panel.hidden = !example;
+  setExampleRevealed(false);
+  if (!example) return;
+
+  appendHighlightedExample($("#example-sentence"), example.sentence, entry.word);
+  const unit = example.unitLabel && example.unit ? ` · ${example.unitLabel} ${example.unit}` : "";
+  $("#example-source").textContent = `剑${example.book} · Test ${example.test}${unit}`;
 }
 
 function addAttemptInput() {
@@ -592,6 +640,10 @@ function bindEvents() {
 
   $("#meaning-reveal").addEventListener("click", () => {
     setMeaningRevealed($("#word-chinese").hidden);
+  });
+
+  $("#example-reveal").addEventListener("click", () => {
+    setExampleRevealed($("#example-content").hidden);
   });
 
   const audioButton = $("#play-audio");
