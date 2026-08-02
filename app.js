@@ -1,5 +1,6 @@
 const STORAGE_KEY = "wordscape-listening-dictation-v1";
 const SPEECH_RATES = [1, 1.2, 1.4, 1.6];
+const DICTIONARY_API = "https://api.dictionaryapi.dev/api/v2/entries/en/";
 const library = Array.isArray(window.LISTENING_WORD_DATA) ? window.LISTENING_WORD_DATA : [];
 const meta = window.LISTENING_LIBRARY_META || { total: library.length, rawRows: library.length, chapters: [] };
 
@@ -22,6 +23,11 @@ let isPlaying = false;
 let advanceTimer = null;
 let toastTimer = null;
 let cachedEnglishVoice = null;
+let activeRecordedAudio = null;
+let finishRecordedPlayback = null;
+const pronunciationRequests = new Map();
+const readyPronunciations = new Map();
+const preloadedRecordings = new Map();
 
 function loadState() {
   try {
@@ -146,6 +152,9 @@ function renderWord() {
   $("#attempt-label").textContent = "等待第 1 次输入";
   updateAudioStatus();
   addAttemptInput();
+  prepareDictionaryPronunciation(currentEntry.word);
+  const nextEntry = words.length ? words[(index + 1) % words.length] : null;
+  if (nextEntry && nextEntry.word !== currentEntry.word) prepareDictionaryPronunciation(nextEntry.word);
   playCurrentWord();
 }
 
@@ -271,24 +280,152 @@ function completeCurrentWord() {
   }, 1400);
 }
 
-function selectVoice(locale = "en-GB") {
+function voiceQualityScore(voice) {
+  const language = String(voice.lang || "").toLocaleLowerCase();
+  const name = String(voice.name || "").toLocaleLowerCase();
+  let score = 0;
+
+  if (language === "en-gb") score += 120;
+  else if (/^en-(ie|au|nz)/.test(language)) score += 85;
+  else if (language.startsWith("en")) score += 55;
+  else return -1;
+
+  if (/natural|neural|premium|enhanced/.test(name)) score += 80;
+  if (/sonia|libby|ryan|google uk english/.test(name)) score += 45;
+  if (/hazel|george|susan|daniel/.test(name)) score += 25;
+  if (voice.default) score += 5;
+  return score;
+}
+
+function selectVoice() {
+  if (!("speechSynthesis" in window)) return null;
   const voices = speechSynthesis.getVoices();
-  cachedEnglishVoice = voices.find((voice) => voice.lang.toLocaleLowerCase() === locale.toLocaleLowerCase())
-    || voices.find((voice) => voice.lang.toLocaleLowerCase().startsWith("en"))
-    || null;
+  cachedEnglishVoice = [...voices]
+    .filter((voice) => voiceQualityScore(voice) >= 0)
+    .sort((left, right) => voiceQualityScore(right) - voiceQualityScore(left))[0] || null;
   return cachedEnglishVoice;
 }
 
-function speakOnce(word, token) {
+function pronunciationKey(word) {
+  return normaliseAnswer(word);
+}
+
+function normaliseAudioUrl(url = "") {
+  if (url.startsWith("//")) return `https:${url}`;
+  return url;
+}
+
+function pronunciationQualityScore(pronunciation) {
+  const audio = String(pronunciation.audio || "").toLocaleLowerCase();
+  let score = pronunciation.audio ? 10 : 0;
+  if (/(?:-uk|_gb|[-_/]gb[-_.]|british)/.test(audio)) score += 100;
+  else if (/(?:-au|[-_/]au[-_.])/.test(audio)) score += 55;
+  else if (/(?:-us|_us|[-_/]us[-_.])/.test(audio)) score += 35;
+  if (pronunciation.text) score += 5;
+  return score;
+}
+
+function preloadRecording(url) {
+  if (!url || !("Audio" in window)) return null;
+  if (preloadedRecordings.has(url)) return preloadedRecordings.get(url);
+  const audio = new Audio(url);
+  audio.preload = "auto";
+  audio.load();
+  preloadedRecordings.set(url, audio);
+  return audio;
+}
+
+function prepareDictionaryPronunciation(word) {
+  const key = pronunciationKey(word);
+  if (!key || pronunciationRequests.has(key)) return pronunciationRequests.get(key) || Promise.resolve(null);
+
+  const request = (async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    try {
+      const response = await fetch(`${DICTIONARY_API}${encodeURIComponent(key)}`, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+      if (!response.ok) return null;
+      const entries = await response.json();
+      const pronunciations = entries.flatMap((entry) => entry.phonetics || []);
+      const best = pronunciations
+        .filter((pronunciation) => pronunciation.audio)
+        .sort((left, right) => pronunciationQualityScore(right) - pronunciationQualityScore(left))[0];
+      if (!best) return null;
+
+      const result = {
+        audio: normaliseAudioUrl(best.audio),
+        phonetic: best.text || entries.find((entry) => entry.phonetic)?.phonetic || "",
+      };
+      readyPronunciations.set(key, result);
+      preloadRecording(result.audio);
+
+      if (currentEntry && pronunciationKey(currentEntry.word) === key) {
+        if (result.phonetic) $("#word-phonetic").textContent = `/${result.phonetic.replace(/^\/+|\/+$/g, "")}/`;
+        if (!isPlaying) updateAudioStatus();
+      }
+      return result;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  })();
+
+  pronunciationRequests.set(key, request);
+  return request;
+}
+
+function playRecordedOnce(pronunciation, token) {
   return new Promise((resolve) => {
-    if (token !== playToken) {
+    if (token !== playToken || !pronunciation?.audio) {
+      resolve(false);
+      return;
+    }
+
+    const audio = preloadRecording(pronunciation.audio);
+    if (!audio) {
+      resolve(false);
+      return;
+    }
+
+    let settled = false;
+    const finish = (played) => {
+      if (settled) return;
+      settled = true;
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
+      if (activeRecordedAudio === audio) {
+        activeRecordedAudio = null;
+        finishRecordedPlayback = null;
+      }
+      resolve(played);
+    };
+    const onEnded = () => finish(true);
+    const onError = () => finish(false);
+
+    activeRecordedAudio = audio;
+    finishRecordedPlayback = () => finish(false);
+    audio.playbackRate = Number(state.speechRate) || 1;
+    audio.currentTime = 0;
+    audio.addEventListener("ended", onEnded, { once: true });
+    audio.addEventListener("error", onError, { once: true });
+    audio.play().catch(onError);
+  });
+}
+
+function speakSyntheticOnce(word, token) {
+  return new Promise((resolve) => {
+    if (token !== playToken || !("speechSynthesis" in window)) {
       resolve();
       return;
     }
     const utterance = new SpeechSynthesisUtterance(word);
     utterance.lang = "en-GB";
     utterance.rate = Number(state.speechRate) || 1;
-    const voice = cachedEnglishVoice || selectVoice("en-GB");
+    const voice = cachedEnglishVoice || selectVoice();
     if (voice) utterance.voice = voice;
     utterance.addEventListener("end", resolve, { once: true });
     utterance.addEventListener("error", resolve, { once: true });
@@ -296,10 +433,19 @@ function speakOnce(word, token) {
   });
 }
 
+async function playPronunciationOnce(word, token) {
+  const dictionaryPronunciation = readyPronunciations.get(pronunciationKey(word));
+  if (dictionaryPronunciation?.audio) {
+    const played = await playRecordedOnce(dictionaryPronunciation, token);
+    if (played || token !== playToken) return;
+  }
+  await speakSyntheticOnce(word, token);
+}
+
 async function playCurrentWord() {
   if (!currentEntry) return;
-  if (!("speechSynthesis" in window)) {
-    showToast("当前浏览器不支持语音播放，请使用最新版 Edge、Chrome 或 Safari");
+  if (!("speechSynthesis" in window) && !("Audio" in window)) {
+    showToast("当前浏览器不支持音频播放，请使用最新版 Edge、Chrome 或 Safari");
     return;
   }
   if (isPlaying) {
@@ -310,14 +456,14 @@ async function playCurrentWord() {
   const token = ++playToken;
   const repeatCount = Number(state.repeatCount) || 1;
   isPlaying = true;
-  speechSynthesis.resume();
+  if ("speechSynthesis" in window) speechSynthesis.resume();
   $("#play-audio").classList.add("playing");
   $("#play-audio strong").textContent = "点击停止播放";
 
   for (let index = 0; index < repeatCount; index += 1) {
     if (token !== playToken) break;
     $("#audio-status").textContent = `正在播放第 ${index + 1} / ${repeatCount} 遍`;
-    await speakOnce(currentEntry.word, token);
+    await playPronunciationOnce(currentEntry.word, token);
   }
 
   if (token === playToken) stopAudio();
@@ -325,6 +471,11 @@ async function playCurrentWord() {
 
 function stopAudio(updateStatus = true) {
   playToken += 1;
+  if (activeRecordedAudio) {
+    activeRecordedAudio.pause();
+    activeRecordedAudio.currentTime = 0;
+  }
+  finishRecordedPlayback?.();
   if ("speechSynthesis" in window) speechSynthesis.cancel();
   isPlaying = false;
   $("#play-audio")?.classList.remove("playing");
@@ -336,7 +487,9 @@ function stopAudio(updateStatus = true) {
 function updateAudioStatus() {
   const repeatCount = Number(state.repeatCount) || 1;
   const rate = Number(state.speechRate) || 1;
-  $("#audio-status").textContent = `每次播放 ${repeatCount} 遍 · ${rate}× 语速 · 英式发音`;
+  const hasRecording = Boolean(currentEntry && readyPronunciations.get(pronunciationKey(currentEntry.word))?.audio);
+  const source = hasRecording ? "词典真人发音" : "优选英式发音";
+  $("#audio-status").textContent = `每次播放 ${repeatCount} 遍 · ${rate}× 语速 · ${source}`;
 }
 
 function bindEvents() {
@@ -372,7 +525,7 @@ function bindEvents() {
   window.addEventListener("beforeunload", () => stopAudio(false));
   if ("speechSynthesis" in window) {
     selectVoice();
-    speechSynthesis.addEventListener?.("voiceschanged", () => selectVoice());
+    speechSynthesis.addEventListener?.("voiceschanged", selectVoice);
   }
 }
 
