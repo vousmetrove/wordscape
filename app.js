@@ -101,6 +101,72 @@ function buildChapterSelect() {
   select.value = state.chapter;
 }
 
+function renderWordList(query = "") {
+  const words = chapterWords();
+  const searchTerm = normaliseAnswer(query).trim();
+  const currentIndex = chapterIndex();
+  const matches = words
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => !searchTerm || normaliseAnswer(entry.word).includes(searchTerm));
+  const list = $("#word-list");
+  const fragment = document.createDocumentFragment();
+
+  matches.forEach(({ entry, index }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "word-list-item";
+    button.dataset.wordIndex = String(index);
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-label", `从第 ${index + 1} 个单词 ${entry.word} 开始练习`);
+    button.setAttribute("aria-selected", String(index === currentIndex));
+    button.classList.toggle("current", index === currentIndex);
+
+    const number = document.createElement("span");
+    number.textContent = String(index + 1).padStart(2, "0");
+    const word = document.createElement("strong");
+    word.textContent = entry.word;
+    button.append(number, word);
+    fragment.appendChild(button);
+  });
+
+  list.replaceChildren(fragment);
+  $("#word-list-count").textContent = searchTerm
+    ? `${matches.length}/${words.length}`
+    : words.length.toLocaleString();
+  $("#word-list-empty").hidden = matches.length > 0;
+  syncWordListCurrent();
+}
+
+function syncWordListCurrent(keepVisible = true) {
+  const currentIndex = chapterIndex();
+  const list = $("#word-list");
+  $$(".word-list-item", list).forEach((button) => {
+    const isCurrent = Number(button.dataset.wordIndex) === currentIndex;
+    button.classList.toggle("current", isCurrent);
+    button.setAttribute("aria-selected", String(isCurrent));
+  });
+
+  if (!keepVisible) return;
+  const currentButton = $(".word-list-item.current", list);
+  if (!currentButton) return;
+  const listRect = list.getBoundingClientRect();
+  const itemRect = currentButton.getBoundingClientRect();
+  if (itemRect.top < listRect.top) list.scrollTop -= listRect.top - itemRect.top;
+  else if (itemRect.bottom > listRect.bottom) list.scrollTop += itemRect.bottom - listRect.bottom;
+}
+
+function jumpToWord(index) {
+  const words = chapterWords();
+  if (!Number.isInteger(index) || index < 0 || index >= words.length) return;
+  state.progress[state.chapter] = index;
+  saveState();
+  renderWord();
+  showToast(`已从第 ${index + 1} 个单词开始`);
+  if (window.matchMedia("(max-width: 900px)").matches) {
+    $("#dictation-card").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 function init() {
   $("#library-total").textContent = Number(meta.total || library.length).toLocaleString();
   $("#library-chapters").textContent = (meta.chapters || []).length.toLocaleString();
@@ -109,6 +175,7 @@ function init() {
   $("#repeat-select").value = String(state.repeatCount || 3);
   $("#speed-select").value = String(state.speechRate || 1);
   bindEvents();
+  renderWordList();
   renderWord();
 }
 
@@ -130,6 +197,7 @@ function renderWord() {
   $("#word-position").textContent = words.length ? index + 1 : 0;
   $("#chapter-word-total").textContent = words.length.toLocaleString();
   $("#chapter-progress-fill").style.width = words.length ? `${((index + 1) / words.length) * 100}%` : "0%";
+  syncWordListCurrent();
 
   if (!currentEntry) {
     $("#word-phonetic").textContent = "/ /";
@@ -495,7 +563,19 @@ function bindEvents() {
   $("#chapter-select").addEventListener("change", (event) => {
     state.chapter = event.target.value;
     saveState();
+    $("#word-list-search").value = "";
+    renderWordList();
     renderWord();
+  });
+
+  $("#word-list-search").addEventListener("input", (event) => {
+    renderWordList(event.target.value);
+  });
+
+  $("#word-list").addEventListener("click", (event) => {
+    const button = event.target.closest(".word-list-item");
+    if (!button) return;
+    jumpToWord(Number(button.dataset.wordIndex));
   });
 
   $("#repeat-select").addEventListener("change", (event) => {
