@@ -142,6 +142,7 @@ function renderWord() {
   $("#attempt-label").textContent = "等待第 1 次输入";
   updateAudioStatus();
   addAttemptInput();
+  playCurrentWord();
 }
 
 function renderStreak() {
