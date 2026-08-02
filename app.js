@@ -1,23 +1,37 @@
 const STORAGE_KEY = "wordscape-english-first-v1";
 const DAY = 86_400_000;
 const REVIEW_INTERVALS = [1, 2, 4, 7, 15, 30, 60];
+const LISTENING_PAGE_SIZE = 72;
 
 const defaultState = {
   settings: { goal: 20, banks: ["CET4", "CET6", "IELTS"], provider: "youdao" },
   records: {},
   stats: { answers: 0, correct: 0, streak: 0, lastStudy: null },
+  memoryProfile: {
+    reviewEvents: 0,
+    successfulReviews: 0,
+    totalResponseMs: 0,
+    chineseReveals: 0,
+    learningRatings: { again: 0, good: 0, easy: 0 },
+    accentPlays: { gb: 0, us: 0, au: 0 },
+  },
   customWords: [],
 };
 
 let state = loadState();
 let words = [...window.WORD_DATA, ...state.customWords];
+const listeningWords = Array.isArray(window.LISTENING_WORD_DATA) ? window.LISTENING_WORD_DATA : [];
+const listeningMeta = window.LISTENING_LIBRARY_META || { total: listeningWords.length, rawRows: listeningWords.length, chapters: [] };
 let session = [];
 let sessionIndex = 0;
 let sessionMode = "learn";
 let toastTimer;
 let searchTimer;
 let activeAudio = null;
-let learningHeard = false;
+let listeningLimit = LISTENING_PAGE_SIZE;
+let listeningActiveButton = null;
+let wordStartedAt = Date.now();
+let chineseUsedThisWord = false;
 
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
@@ -30,6 +44,12 @@ function loadState() {
       ...saved,
       settings: { ...defaultState.settings, ...(saved.settings || {}) },
       stats: { ...defaultState.stats, ...(saved.stats || {}) },
+      memoryProfile: {
+        ...defaultState.memoryProfile,
+        ...(saved.memoryProfile || {}),
+        learningRatings: { ...defaultState.memoryProfile.learningRatings, ...(saved.memoryProfile?.learningRatings || {}) },
+        accentPlays: { ...defaultState.memoryProfile.accentPlays, ...(saved.memoryProfile?.accentPlays || {}) },
+      },
       records: saved.records || {},
       customWords: saved.customWords || [],
     };
@@ -51,6 +71,72 @@ function addDays(key, days) {
   const date = new Date(`${key}T12:00:00`);
   date.setDate(date.getDate() + days);
   return dateKey(date);
+}
+
+function daysBetween(from, to) {
+  if (!from) return 1;
+  return Math.max(0, Math.round((new Date(`${to}T12:00:00`) - new Date(`${from}T12:00:00`)) / DAY));
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function normalizeRecord(record = {}) {
+  const stage = Number.isFinite(record.stage) ? record.stage : 0;
+  return {
+    seen: false,
+    stage,
+    failures: 0,
+    attempts: 0,
+    correct: 0,
+    inMistake: false,
+    ...record,
+    difficulty: clamp(Number(record.difficulty) || 5, 1, 10),
+    stability: Math.max(.35, Number(record.stability) || REVIEW_INTERVALS[Math.min(stage, REVIEW_INTERVALS.length - 1)] || 1),
+    history: Array.isArray(record.history) ? record.history : [],
+  };
+}
+
+function memoryPaceFactor() {
+  const profile = state.memoryProfile;
+  if (profile.reviewEvents < 5) return 1;
+  const choices = profile.learningRatings.again + profile.learningRatings.good + profile.learningRatings.easy;
+  const decisions = Math.max(1, profile.reviewEvents + choices);
+  const recallRate = profile.successfulReviews / profile.reviewEvents;
+  const hintRate = choices ? profile.chineseReveals / choices : 0;
+  const familiarRate = choices ? profile.learningRatings.easy / choices : 0;
+  const uncertainRate = choices ? profile.learningRatings.again / choices : 0;
+  const averageSeconds = profile.totalResponseMs / decisions / 1000;
+  const accentPlays = Object.values(profile.accentPlays).reduce((sum, count) => sum + count, 0);
+  const audioPerDecision = accentPlays / decisions;
+  const slowPenalty = clamp((averageSeconds - 15) / 100, 0, .08);
+  const audioPenalty = clamp((audioPerDecision - 1.5) * .02, 0, .05);
+  return clamp(
+    .84 + recallRate * .34 + familiarRate * .06 - uncertainRate * .08 - hintRate * .06 - slowPenalty - audioPenalty,
+    .75,
+    1.2,
+  );
+}
+
+function stabilityStage(stability) {
+  if (stability >= 30) return 5;
+  if (stability >= 15) return 4;
+  if (stability >= 7) return 3;
+  if (stability >= 3) return 2;
+  if (stability >= 1) return 1;
+  return 0;
+}
+
+function addHistory(record, event) {
+  record.history = [...(record.history || []), event].slice(-60);
+}
+
+function memoryInsight() {
+  const profile = state.memoryProfile;
+  if (profile.reviewEvents < 5) return `Calibration is starting. ${5 - profile.reviewEvents} more review choices will make the schedule more personal.`;
+  const rate = Math.round((profile.successfulReviews / profile.reviewEvents) * 100);
+  return `Your observed recall rate is ${rate}%. Wordscape is adjusting each word's difficulty and stability locally on this device.`;
 }
 
 function activeWords() {
@@ -81,6 +167,7 @@ function getPlan() {
 function init() {
   renderDate();
   renderBanks();
+  initListeningLibrary();
   renderDashboard();
   renderReview();
   renderMistakes();
@@ -165,7 +252,7 @@ function renderMistakes() {
   $("#mistake-empty").hidden = mistakes.length > 0;
   $("#mistake-grid").innerHTML = mistakes.map((word) => {
     const record = getRecord(word.id);
-    return `<article class="mistake-card"><span>${word.bank.replace("CET", "CET-")} · ${record.failures} FAILED RECALLS</span><h3>${word.word}</h3><p>${word.definition}</p><button type="button" data-practice-word="${word.id}">Learn and use it again →</button></article>`;
+    return `<article class="mistake-card"><span>${word.bank.replace("CET", "CET-")} · ${record.failures} FAILED RECALLS</span><h3>${word.word}</h3><p>${word.definition}</p><button type="button" data-practice-word="${word.id}">Study it again →</button></article>`;
   }).join("");
 }
 
@@ -189,6 +276,7 @@ function renderProgress() {
 }
 
 function showView(name) {
+  if (name !== "listening") stopListeningPronunciation();
   $$(".view").forEach((view) => view.classList.toggle("active", view.dataset.viewPanel === name));
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
   document.body.classList.remove("menu-open");
@@ -196,6 +284,7 @@ function showView(name) {
   if (name === "review") renderReview();
   if (name === "mistakes") renderMistakes();
   if (name === "progress") renderProgress();
+  if (name === "listening") renderListeningLibrary();
 }
 
 function startSession(queue, mode = "learn") {
@@ -216,8 +305,10 @@ function startSession(queue, mode = "learn") {
 
 function renderStudyWord() {
   const word = session[sessionIndex];
-  const record = getRecord(word.id);
+  const record = getRecord(word.id) ? normalizeRecord(getRecord(word.id)) : null;
   const isAssessment = sessionMode === "assessment";
+  wordStartedAt = Date.now();
+  chineseUsedThisWord = false;
   $("#study-index").textContent = sessionIndex + 1;
   $("#study-progress-fill").style.width = `${(sessionIndex / session.length) * 100}%`;
   $("#study-bank").textContent = word.bank.replace("CET", "CET-");
@@ -232,108 +323,76 @@ function renderStudyWord() {
   $("#study-source").textContent = word.source || "Imported word bank";
   $("#study-source-link").hidden = !word.sourceUrl;
   $("#study-source-link").href = word.sourceUrl || "#";
-  $("#recall-bank").textContent = word.bank.replace("CET", "CET-");
-  $("#use-bank").textContent = word.bank.replace("CET", "CET-");
-  $("#use-word").textContent = word.word;
-  $("#use-definition").textContent = word.definition;
   $("#chinese-result").hidden = true;
   $("#chinese-result").textContent = "";
   $("#reveal-chinese").disabled = false;
-  $("#personal-sentence").value = "";
-  $("#sentence-feedback").textContent = "Use the word and at least three other English words.";
-  $("#sentence-feedback").className = "sentence-feedback";
-  $("#finish-learning").disabled = true;
-  $("#start-learning-recall").disabled = true;
-  $("#start-learning-recall").innerHTML = "Hear one accent to continue <span>→</span>";
-  learningHeard = false;
+  $("#schedule-preview").textContent = "Your choice changes this word's next review.";
   stopAudio();
   $("#learning-card").hidden = isAssessment;
   $("#assessment-card").hidden = !isAssessment;
   $("#meaning-question").hidden = true;
   $("#confirm-repeat").hidden = false;
   $(".guide-note").hidden = isAssessment;
-  setAudioStatus(isAssessment ? "Play an accent, then repeat the word aloud." : "Choose an accent to hear a real recording.");
+  setAudioStatus(isAssessment ? "Play an accent, then repeat the word aloud." : "Choose any accent. Compare them only when useful.");
 
   if (isAssessment) {
     $("#guide-kicker").textContent = "A SEPARATE RECALL SPACE";
     $("#guide-title").textContent = "Your voice does the work.";
     $("#guide-copy").textContent = "Listen without seeing the spelling, repeat the sound aloud, then decide whether the meaning is present in your mind.";
   } else {
-    showLearningPhase("understand");
+    $("#guide-kicker").textContent = "YOUR MEMORY MODEL";
+    $("#guide-title").textContent = "You judge; Wordscape schedules.";
+    $("#guide-copy").textContent = memoryInsight();
   }
   $("#study-card").animate([{ opacity: .55, transform: "translateY(5px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 240 });
 }
 
-function showLearningPhase(phase) {
-  $("#learn-understand").hidden = phase !== "understand";
-  $("#learn-recall").hidden = phase !== "recall";
-  $("#learn-use").hidden = phase !== "use";
-  $(".guide-note").hidden = phase !== "understand";
-  stopAudio();
-
-  if (phase === "understand") {
-    $("#guide-kicker").textContent = "1 · UNDERSTAND";
-    $("#guide-title").textContent = "Make the meaning clear.";
-    $("#guide-copy").textContent = "Hear one accent, read one simple English meaning, and notice how the word works in a real sentence.";
-    setAudioStatus(learningHeard ? "You can compare another accent or continue." : "Choose an accent before the recall step opens.");
-  } else if (phase === "recall") {
-    $("#guide-kicker").textContent = "2 · RETRIEVE";
-    $("#guide-title").textContent = "Close the answer and rebuild it.";
-    $("#guide-copy").textContent = "Say the word and explain its meaning aloud from memory. This is practice, not a score.";
-    setAudioStatus("Say the word and its easy English meaning aloud.");
-  } else {
-    $("#guide-kicker").textContent = "3 · USE IT";
-    $("#guide-title").textContent = "Give the word a job.";
-    $("#guide-copy").textContent = "A short sentence you create makes the word more useful and gives memory another route back.";
-  }
-}
-
-function openLearningRecall() {
-  if (!learningHeard) return showToast("Hear at least one accent first");
-  showLearningPhase("recall");
-}
-
-function openLearningUse() {
-  showLearningPhase("use");
-  setTimeout(() => $("#personal-sentence").focus(), 80);
-}
-
-function validatePersonalSentence() {
-  const word = session[sessionIndex]?.word || "";
-  const value = $("#personal-sentence").value.trim();
-  const tokens = value.match(/[A-Za-z]+(?:'[A-Za-z]+)?/g) || [];
-  const target = word.toLowerCase();
-  const targetStem = target.slice(0, Math.max(3, target.length - 2));
-  const hasWord = tokens.some((token) => {
-    const normalized = token.toLowerCase();
-    return normalized === target || normalized.startsWith(targetStem);
-  });
-  const valid = tokens.length >= 4 && hasWord;
-  $("#finish-learning").disabled = !valid;
-
-  if (!value) {
-    $("#sentence-feedback").textContent = "Use the word and at least three other English words.";
-    $("#sentence-feedback").className = "sentence-feedback";
-  } else if (!hasWord) {
-    $("#sentence-feedback").textContent = `Include “${word}” or a natural form of it.`;
-    $("#sentence-feedback").className = "sentence-feedback needs-work";
-  } else if (tokens.length < 4) {
-    $("#sentence-feedback").textContent = "Add a few more words to make a complete idea.";
-    $("#sentence-feedback").className = "sentence-feedback needs-work";
-  } else {
-    $("#sentence-feedback").textContent = "Good — this sentence is your personal memory link.";
-    $("#sentence-feedback").className = "sentence-feedback ready";
-  }
-}
-
-function completeLearningWord() {
+function rateLearningWord(rating) {
   const word = session[sessionIndex];
   const today = dateKey();
-  const record = state.records[word.id] || { seen: false, stage: 0, failures: 0, attempts: 0, correct: 0, inMistake: false };
+  const record = normalizeRecord(state.records[word.id]);
+  const firstMeeting = !record.seen;
+  const pace = memoryPaceFactor();
+  const config = {
+    again: { difficulty: 8, stability: .5, interval: 1 },
+    good: { difficulty: 5, stability: 1, interval: 1 },
+    easy: { difficulty: 3, stability: 4, interval: 4 },
+  }[rating];
+
   record.seen = true;
   record.lastReviewed = today;
-  record.personalSentence = $("#personal-sentence").value.trim();
-  if (!record.nextReview) record.nextReview = addDays(today, 1);
+  record.lastLearningRating = rating;
+  record.difficulty = firstMeeting
+    ? config.difficulty
+    : clamp(record.difficulty + (rating === "again" ? .7 : rating === "easy" ? -.5 : -.1), 1, 10);
+  record.stability = firstMeeting
+    ? config.stability
+    : Math.max(.35, record.stability * (rating === "again" ? .65 : rating === "easy" ? 1.5 : 1.08));
+  const interval = Math.max(1, Math.round((firstMeeting ? config.interval : record.stability) * pace));
+  record.nextReview = addDays(today, interval);
+  record.stage = stabilityStage(record.stability);
+
+  const responseMs = Date.now() - wordStartedAt;
+  addHistory(record, {
+    date: today,
+    kind: "learn",
+    rating,
+    responseMs,
+    usedChinese: chineseUsedThisWord,
+    stability: Number(record.stability.toFixed(2)),
+    nextReview: record.nextReview,
+  });
+
+  state.memoryProfile.learningRatings[rating] += 1;
+  state.memoryProfile.totalResponseMs += responseMs;
+  if (chineseUsedThisWord) state.memoryProfile.chineseReveals += 1;
+
+  if (rating === "again" && record.sameDayRepeatDate !== today) {
+    record.sameDayRepeatDate = today;
+    session.push(word);
+    showToast(`${word.word} will appear once more near the end`);
+  }
+
   state.records[word.id] = record;
   updateStreak(today);
   saveState();
@@ -349,28 +408,50 @@ function advanceSession() {
 function answerWord(answer) {
   const word = session[sessionIndex];
   const today = dateKey();
-  const record = state.records[word.id] || { seen: false, stage: 0, failures: 0, attempts: 0, correct: 0, inMistake: false };
+  const record = normalizeRecord(state.records[word.id]);
+  const elapsedDays = Math.max(.25, daysBetween(record.lastReviewed, today));
+  const retrievability = Math.pow(.9, elapsedDays / Math.max(.35, record.stability));
+  const pace = memoryPaceFactor();
+  const responseMs = Date.now() - wordStartedAt;
   record.seen = true;
   record.attempts += 1;
   record.lastReviewed = today;
   state.stats.answers += 1;
+  state.memoryProfile.reviewEvents += 1;
+  state.memoryProfile.totalResponseMs += responseMs;
 
   if (answer === "forgot") {
     record.failures += 1;
-    record.stage = 0;
+    record.difficulty = clamp(record.difficulty + .9, 1, 10);
+    record.stability = Math.max(.35, record.stability * .45);
     record.nextReview = addDays(today, 1);
     if (record.failures >= 3) record.inMistake = true;
   } else if (answer === "hard") {
-    record.stage = Math.max(0, record.stage - 1);
+    record.difficulty = clamp(record.difficulty + .25, 1, 10);
+    record.stability = Math.max(.5, record.stability * 1.08);
     record.nextReview = addDays(today, 1);
   } else {
-    const interval = REVIEW_INTERVALS[Math.min(record.stage, REVIEW_INTERVALS.length - 1)];
-    record.stage = Math.min(record.stage + 1, REVIEW_INTERVALS.length - 1);
-    record.nextReview = addDays(today, interval);
+    const growth = (1.45 + (1 - retrievability) * 1.8 + (10 - record.difficulty) * .035) * pace;
+    record.difficulty = clamp(record.difficulty - .2, 1, 10);
+    record.stability = clamp(record.stability * growth, 1, 3650);
+    record.nextReview = addDays(today, Math.max(1, Math.round(record.stability)));
     record.correct += 1;
     state.stats.correct += 1;
-    if (record.inMistake && record.stage >= 3) record.inMistake = false;
+    state.memoryProfile.successfulReviews += 1;
   }
+
+  record.stage = stabilityStage(record.stability);
+  if (record.inMistake && record.stage >= 3) record.inMistake = false;
+  addHistory(record, {
+    date: today,
+    kind: "review",
+    rating: answer,
+    elapsedDays,
+    responseMs,
+    retrievability: Number(retrievability.toFixed(3)),
+    stability: Number(record.stability.toFixed(2)),
+    nextReview: record.nextReview,
+  });
 
   state.records[word.id] = record;
   updateStreak(today);
@@ -393,7 +474,7 @@ function finishSession() {
   renderReview();
   renderMistakes();
   renderProgress();
-  showToast(sessionMode === "assessment" ? "Review complete — your memory curve is updated" : "Learning complete — your sentence and review plan are saved");
+  showToast(sessionMode === "assessment" ? "Review complete — your memory curve is updated" : "Learning complete — your next reviews are scheduled");
 }
 
 function closeStudy() {
@@ -410,11 +491,8 @@ function setAudioStatus(message) {
 async function playPronunciation(accent, button) {
   const word = session[sessionIndex];
   if (!word) return;
-  if (sessionMode !== "assessment" && !$("#learn-understand").hidden) {
-    learningHeard = true;
-    $("#start-learning-recall").disabled = false;
-    $("#start-learning-recall").innerHTML = "Close the answer and recall it <span>→</span>";
-  }
+  state.memoryProfile.accentPlays[accent] += 1;
+  saveState();
   stopAudio();
   $$("[data-accent]").forEach((item) => item.classList.toggle("playing", item.dataset.accent === accent));
   setAudioStatus(`Playing ${accent === "gb" ? "British" : accent === "us" ? "American" : "Australian"} English…`);
@@ -480,6 +558,7 @@ async function revealChinese() {
   const word = session[sessionIndex];
   const result = $("#chinese-result");
   const button = $("#reveal-chinese");
+  chineseUsedThisWord = true;
   button.disabled = true;
   result.hidden = false;
   result.textContent = "Looking it up only because you asked…";
@@ -627,6 +706,121 @@ function escapeHtml(value) {
   return value.replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
 }
 
+function escapeHTML(value = "") {
+  return String(value).replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character]);
+}
+
+function initListeningLibrary() {
+  $("#listening-total").textContent = Number(listeningMeta.total || listeningWords.length).toLocaleString();
+  $("#listening-raw-total").textContent = Number(listeningMeta.rawRows || listeningWords.length).toLocaleString();
+  $("#listening-chapter-total").textContent = (listeningMeta.chapters || []).length.toLocaleString();
+  $("#listening-nav-count").textContent = listeningWords.length >= 1000
+    ? `${(listeningWords.length / 1000).toFixed(1)}k`
+    : listeningWords.length.toLocaleString();
+  $("#listening-source").textContent = `来源：${listeningMeta.sourceFile || "用户提供的雅思听力词表"} · 发音由当前设备的英语语音提供`;
+
+  const chapterCounts = new Map();
+  listeningWords.forEach((entry) => {
+    (entry.chapters || []).forEach((chapter) => chapterCounts.set(chapter, (chapterCounts.get(chapter) || 0) + 1));
+  });
+  const chapters = listeningMeta.chapters?.length ? listeningMeta.chapters : [...chapterCounts.keys()];
+  $("#listening-chapter").innerHTML = [
+    '<option value="all">全部章节</option>',
+    ...chapters.map((chapter) => `<option value="${escapeHTML(chapter)}">${escapeHTML(chapter)} · ${chapterCounts.get(chapter) || 0} 词</option>`),
+  ].join("");
+  renderListeningLibrary();
+}
+
+function listeningMatches() {
+  const query = $("#listening-search").value.trim().toLocaleLowerCase();
+  const chapter = $("#listening-chapter").value;
+  return listeningWords
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => {
+      const inChapter = chapter === "all" || (entry.chapters || []).includes(chapter);
+      const haystack = `${entry.word} ${entry.phonetic || ""} ${entry.chinese || ""}`.toLocaleLowerCase();
+      return inChapter && (!query || haystack.includes(query));
+    });
+}
+
+function renderListeningLibrary() {
+  const matches = listeningMatches();
+  const visible = matches.slice(0, listeningLimit);
+  const chapter = $("#listening-chapter").value;
+  const query = $("#listening-search").value.trim();
+
+  $("#listening-match-count").textContent = matches.length.toLocaleString();
+  $("#listening-result-title").textContent = chapter === "all"
+    ? (query ? `“${query}” 的搜索结果` : "全部听力词汇")
+    : `${chapter} 章节${query ? ` · “${query}”` : ""}`;
+  $("#listening-empty").hidden = matches.length > 0;
+  $("#listening-load-more").hidden = !matches.length || visible.length >= matches.length;
+  $("#listening-load-more").textContent = `继续显示更多词汇（已显示 ${visible.length.toLocaleString()} / ${matches.length.toLocaleString()}）`;
+
+  $("#listening-word-grid").innerHTML = visible.map(({ entry, index }) => {
+    const phonetic = entry.phonetic ? `/${entry.phonetic.replace(/^\/+|\/+$/g, "")}/` : "暂无音标";
+    return `
+      <article class="listening-word-card">
+        <div class="listening-word-copy">
+          <span>${escapeHTML((entry.chapters || []).join(" · "))}</span>
+          <h3>${escapeHTML(entry.word)}</h3>
+          <p class="listening-phonetic">${escapeHTML(phonetic)}</p>
+          <p class="listening-chinese">${escapeHTML(entry.chinese)}</p>
+        </div>
+        <button type="button" data-listening-index="${index}" aria-label="播放 ${escapeHTML(entry.word)} 的发音">
+          <svg viewBox="0 0 24 24"><path d="M5 9v6h4l5 4V5L9 9H5Zm12.5 1.2a3 3 0 0 1 0 3.6M19.7 8a6 6 0 0 1 0 8" /></svg>
+          <span>发音</span><small>${escapeHTML($("#listening-speed").selectedOptions[0].textContent.split(" ")[0])}</small>
+        </button>
+      </article>`;
+  }).join("");
+}
+
+function stopListeningPronunciation() {
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  if (listeningActiveButton) {
+    listeningActiveButton.classList.remove("playing");
+    listeningActiveButton.querySelector("span").textContent = "发音";
+  }
+  listeningActiveButton = null;
+}
+
+function playListeningPronunciation(index, button) {
+  const entry = listeningWords[index];
+  if (!entry || !("speechSynthesis" in window)) {
+    showToast("当前浏览器不支持语音播放");
+    return;
+  }
+  if (listeningActiveButton === button && speechSynthesis.speaking) {
+    stopListeningPronunciation();
+    return;
+  }
+
+  stopListeningPronunciation();
+  const utterance = new SpeechSynthesisUtterance(entry.word);
+  utterance.lang = "en-GB";
+  utterance.rate = Number($("#listening-speed").value) || 1;
+  const voices = speechSynthesis.getVoices();
+  const britishVoice = voices.find((voice) => voice.lang.toLowerCase() === "en-gb")
+    || voices.find((voice) => voice.lang.toLowerCase().startsWith("en"));
+  if (britishVoice) utterance.voice = britishVoice;
+
+  listeningActiveButton = button;
+  button.classList.add("playing");
+  button.querySelector("span").textContent = "停止";
+  const finish = () => {
+    if (listeningActiveButton === button) stopListeningPronunciation();
+  };
+  utterance.addEventListener("end", finish, { once: true });
+  utterance.addEventListener("error", finish, { once: true });
+  speechSynthesis.speak(utterance);
+}
+
 function showToast(message) {
   clearTimeout(toastTimer);
   $("#toast").textContent = message;
@@ -650,16 +844,7 @@ function bindEvents() {
   });
   $("#start-review").addEventListener("click", () => startSession(getDueWords(), "assessment"));
   $(".study-close").addEventListener("click", closeStudy);
-  $("#start-learning-recall").addEventListener("click", openLearningRecall);
-  $("#confirm-learning-recall").addEventListener("click", openLearningUse);
-  $("#personal-sentence").addEventListener("input", validatePersonalSentence);
-  $("#repeat-learning").addEventListener("click", () => {
-    learningHeard = false;
-    $("#start-learning-recall").disabled = true;
-    $("#start-learning-recall").innerHTML = "Hear one accent to continue <span>→</span>";
-    showLearningPhase("understand");
-  });
-  $("#finish-learning").addEventListener("click", completeLearningWord);
+  $$("[data-learning-rating]").forEach((button) => button.addEventListener("click", () => rateLearningWord(button.dataset.learningRating)));
   $("#confirm-repeat").addEventListener("click", () => {
     $("#confirm-repeat").hidden = true;
     $("#meaning-question").hidden = false;
@@ -675,6 +860,24 @@ function bindEvents() {
     searchTimer = setTimeout(() => searchLocal(event.target.value), 120);
   });
   $("#word-search").addEventListener("keydown", (event) => { if (event.key === "Enter") lookupRemote(event.target.value); });
+  $("#listening-search").addEventListener("input", () => {
+    listeningLimit = LISTENING_PAGE_SIZE;
+    renderListeningLibrary();
+  });
+  $("#listening-chapter").addEventListener("change", () => {
+    listeningLimit = LISTENING_PAGE_SIZE;
+    stopListeningPronunciation();
+    renderListeningLibrary();
+  });
+  $("#listening-speed").addEventListener("change", () => {
+    stopListeningPronunciation();
+    renderListeningLibrary();
+    showToast(`发音速度已调整为 ${$("#listening-speed").selectedOptions[0].textContent.split(" ")[0]}`);
+  });
+  $("#listening-load-more").addEventListener("click", () => {
+    listeningLimit += LISTENING_PAGE_SIZE;
+    renderListeningLibrary();
+  });
   $("#word-import").addEventListener("change", (event) => { if (event.target.files[0]) importWords(event.target.files[0]); });
 
   document.addEventListener("click", (event) => {
@@ -691,6 +894,8 @@ function bindEvents() {
       $("#search-dialog").close();
       startSession([word], "search");
     }
+    const listeningButton = event.target.closest("[data-listening-index]");
+    if (listeningButton) playListeningPronunciation(Number(listeningButton.dataset.listeningIndex), listeningButton);
   });
 
   document.addEventListener("keydown", (event) => {

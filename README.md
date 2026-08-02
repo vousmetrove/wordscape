@@ -1,10 +1,10 @@
 # Wordscape — think in English
 
-Wordscape is an English-first vocabulary learning website for Chinese learners. It replaces automatic word-to-Chinese matching with three active memory anchors:
+Wordscape is an English-first vocabulary learning website for Chinese learners. It replaces automatic word-to-Chinese matching with three direct memory anchors:
 
 1. a very simple English definition;
-2. immediate spoken retrieval;
-3. one short sentence created by the learner.
+2. one natural sentence in context;
+3. an honest familiarity choice that trains the schedule.
 
 Chinese stays hidden unless the learner explicitly asks for it.
 
@@ -12,8 +12,9 @@ Chinese stays hidden unless the learner explicitly asks for it.
 
 - Flexible daily target with any positive number and quick presets up to 200
 - CET-4, CET-6, and IELTS categories
+- Dedicated IELTS listening library with 5,230 deduplicated entries, 34 chapter filters, phonetics, Chinese meanings, and 0.75×–2× pronunciation speed
 - Reviews automatically reserve the first places inside the daily target while staying in a separate assessment space
-- Ebbinghaus-style intervals at 1, 2, 4, 7, 15, 30, and 60 days
+- Adaptive per-word scheduling based on difficulty, stability, retrievability, and the learner's local history
 - Three failed recalls automatically move a word into the mistake book
 - Words leave the mistake book after reaching memory stage 3 again
 - Matching browser speech voice only as a final fallback for imported words
@@ -25,7 +26,7 @@ Chinese stays hidden unless the learner explicitly asks for it.
 - JSON/CSV import for licensed word books and authentic exam sentences
 - Responsive desktop and mobile layouts
 
-The repository includes 30 manually rewritten, fully enriched seed words, 90 pronunciation recordings, and a synchronized 4,020-word CET syllabus list. The raw CET list is deliberately kept separate: words should not enter the learning queue until they have a checked plain-English definition, visual, and source-safe sentence.
+The repository includes 30 manually rewritten, fully enriched seed words, 90 pronunciation recordings, and a synchronized 4,020-word CET syllabus list. The raw CET list is deliberately kept separate: words should not enter the learning queue until they have a checked plain-English definition and source-safe sentence.
 
 ## Run locally
 
@@ -63,13 +64,15 @@ Use `data/import-template.json` as the schema. Required fields are:
 
 Recommended fields are `bank`, `phonetic`, `pos`, `topic`, `example`, `source`, `sourceUrl`, and `chinese`. Images, videos, scenes, and emoji cues are deliberately ignored because a weak visual match can teach the wrong meaning.
 
+## IELTS listening library
+
+The Listening view is intentionally separate from the English-first learning queue. It contains only the information needed for sound recognition: the word, its phonetic transcription, a device-generated British English pronunciation, and the supplied Chinese meaning. Learners can search in English or Chinese, filter by the workbook's original chapter numbers, and choose 0.75×, 1×, 1.25×, 1.5×, or 2× speech speed.
+
+`listening-data.js` was generated from the user-provided `雅思听力语料库智能自测表.xlsx`. The workbook itself is not committed. The import consolidated 5,918 usable rows into 5,230 unique entries while preserving all 34 source chapter labels.
+
 ## Learning and assessment
 
-The learning card is not a scored test, but it cannot be skipped passively:
-
-1. **Understand:** play at least one regional pronunciation, read one short English definition, and notice the word in context.
-2. **Retrieve:** the spelling and definition close; say the word and explain it aloud from memory.
-3. **Use:** write one short personal English sentence containing the word. The sentence is stored locally with the memory record.
+The learning card keeps the word, three regional pronunciations, one short English definition, one example, and optional Chinese together. After reading, the learner chooses **Still new**, **Starting to stick**, or **Already familiar**. That choice sets the initial difficulty and review spacing; “Still new” also places the word once more near the end of the current session.
 
 Assessment lives in the separate Review view:
 
@@ -78,6 +81,12 @@ Assessment lives in the separate Review view:
 3. answer only whether its meaning is present in your mind.
 
 A “not yet” answer resets the memory stage and adds one failed recall. After three failed recalls, the word enters the mistake book automatically.
+
+## Adaptive memory model
+
+Each word stores its own difficulty, stability, estimated retrievability, failures, timing, and recent review history. Successful recall expands the next interval; forgetting shortens it and raises difficulty. The user profile gradually calibrates interval growth from review success, response time, familiarity choices, Chinese reveals, and accent plays. Existing fixed-interval records migrate automatically.
+
+This is a transparent local model, not a claim to reproduce Maimemo's proprietary data or algorithm. All behavioural history stays in the browser.
 
 ## Regenerate local pronunciation files
 
@@ -121,6 +130,7 @@ wordscape/
 ├── index.html                # App views and study interface
 ├── styles.css                # Responsive visual system
 ├── data.js                   # Enriched English-first seed words
+├── listening-data.js         # User-provided IELTS listening vocabulary
 └── app.js                    # Scheduling, study, search, import, and progress
 ```
 
